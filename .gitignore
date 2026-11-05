@@ -1,0 +1,5 @@
+# OS やエディタが作るファイル
+.DS_Store
+Thumbs.db
+.vscode/
+*.log

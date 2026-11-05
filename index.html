@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>クレーンゲーム</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main class="app">
+    <h1 class="title">クレーンゲーム</h1>
+    <canvas id="game" width="480" height="640" aria-label="クレーンゲームの画面"></canvas>
+    <p class="help">← → で移動、スペースでアームを下ろす（ステップ2で実装予定）</p>
+  </main>
+
+  <!-- ES モジュールを使わず、読み込み順で依存関係を解決する -->
+  <script src="js/config.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
