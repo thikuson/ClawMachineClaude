@@ -9,6 +9,7 @@ const Claw = {
   held: null,     // つかんでいる景品
   holdOffsetX: 0, // つかんだ景品の、アーム中心からの横のずれ
   slipAt: -1,     // 景品が滑り落ちるまでの時間（-1 なら落ちない）
+  canDrop: () => true, // 下ろしてよいか（プレイ回数が残っているか。main.js で設定）
   onResult: null, // 出来事（drop / grab / miss / slip）を伝える関数（main.js で設定）
 
   reset() {
@@ -40,7 +41,7 @@ const Claw = {
         if (Input.isDown('ArrowLeft')) this.x -= c.moveSpeed * dt;
         if (Input.isDown('ArrowRight')) this.x += c.moveSpeed * dt;
         this.x = Math.max(c.minX, Math.min(c.maxX, this.x));
-        if (Input.wasPressed('Space')) {
+        if (Input.wasPressed('Space') && this.canDrop()) {
           this.setState('down');
           this.report('drop');
         }
@@ -137,7 +138,8 @@ const Claw = {
       return;
     }
     const offset = Math.abs(target.x - this.x) / target.r; // 0 なら真ん中
-    const grabChance = Math.max(0.15, Math.min(0.95, 1.05 - offset * 0.8));
+    const grip = PRIZE_SPRITES[target.type].grip;
+    const grabChance = Math.max(0.1, Math.min(0.95, (1.05 - offset * 0.8) * grip));
     if (Math.random() > grabChance) {
       this.report('miss');
       return;
@@ -150,7 +152,7 @@ const Claw = {
     this.holdOffsetX = (target.x - this.x) * 0.4;
 
     // 持ち上げたあと滑り落ちるかどうかも、ここで決めておく
-    const slipChance = Math.max(0.1, Math.min(0.7, offset * 0.6 + 0.1));
+    const slipChance = Math.max(0.05, Math.min(0.8, (offset * 0.6 + 0.1) / grip));
     this.slipAt = Math.random() < slipChance ? 0.2 + Math.random() * 1.8 : -1;
     this.carryTime = 0;
   },

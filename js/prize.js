@@ -7,8 +7,14 @@ const Prizes = {
     const p = CONFIG.prize;
     this.list = [];
     // 種類がかたよらないように、順番に割り当ててから混ぜる
+    const normalTypes = [];
+    PRIZE_SPRITES.forEach((s, i) => { if (!s.rare) normalTypes.push(i); });
     const types = [];
-    for (let i = 0; i < p.count; i++) types.push(i % PRIZE_SPRITES.length);
+    for (let i = 0; i < p.count; i++) types.push(normalTypes[i % normalTypes.length]);
+    // レア景品は、出るときだけ 1 個と入れ替える
+    if (Math.random() < p.rareChance) {
+      types[0] = PRIZE_SPRITES.findIndex((s) => s.rare);
+    }
     types.sort(() => Math.random() - 0.5);
     for (let i = 0; i < p.count; i++) {
       const r = p.minRadius + Math.random() * (p.maxRadius - p.minRadius);
@@ -24,14 +30,14 @@ const Prizes = {
     }
   },
 
-  // 物理の更新。取り出し口に落ちた景品の数を返す
+  // 物理の更新。取り出し口に落ちた景品の一覧を返す
   update(dt) {
     const g = CONFIG.prize.gravity;
     const box = CONFIG.case;
     const floorY = CONFIG.floorY;
     const chute = CONFIG.chute;
     const chuteRight = chute.x + chute.w;
-    let captured = 0;
+    const captured = [];
 
     // 重力と移動
     for (const p of this.list) {
@@ -56,7 +62,7 @@ const Prizes = {
     // 取り出し口に入った景品を取り除く
     this.list = this.list.filter((p) => {
       const inChute = !p.held && p.x < chuteRight && p.y - p.r > chute.y;
-      if (inChute) captured++;
+      if (inChute) captured.push(p);
       return !inChute;
     });
     return captured;

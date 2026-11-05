@@ -49,3 +49,49 @@ body {
 .controls button:active { background: #7a6db8; }
 
 .controls .drop { background: #e85d8a; min-width: 96px; }
+
+/* 景品の図鑑 */
+.zukan {
+  margin: 16px auto 0;
+  max-width: 480px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #2b2745;
+}
+
+.zukan h2 { margin: 0 0 10px; font-size: 1rem; }
+
+#zukan-progress { margin-left: 8px; font-weight: normal; opacity: 0.8; }
+
+.zukan-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.zukan-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border-radius: 8px;
+  background: #3d3866;
+}
+
+.zukan-item.rare { box-shadow: inset 0 0 0 2px #ffd23f; }
+
+.zukan-icon {
+  width: 48px;
+  height: 48px;
+  image-rendering: pixelated; /* ドット絵をぼかさずに拡大する */
+}
+
+.zukan-name { font-size: 0.85rem; font-weight: bold; }
+
+.zukan-info { font-size: 0.75rem; opacity: 0.8; }
+
+.zukan-item.unknown .zukan-name { opacity: 0.6; }

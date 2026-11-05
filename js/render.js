@@ -8,7 +8,7 @@ const Render = {
     this.ctx = canvas.getContext('2d');
     // ドット絵を拡大したときにぼやけないようにする
     this.ctx.imageSmoothingEnabled = false;
-    this.prizeImages = PRIZE_SPRITES.map(buildSprite);
+    this.prizeImages = PRIZE_SPRITES.map((sprite) => buildSprite(sprite));
     this.clawHeadImage = buildSprite(CLAW_HEAD_SPRITE);
   },
 
@@ -124,20 +124,64 @@ const Render = {
       img.width * 3, img.height * 3);
   },
 
-  // 上の獲得数と下のメッセージ
-  drawHud(score, message, soundOn) {
+  // 上のスコア・残り回数・ハイスコアと、下のメッセージ
+  drawHud(hud) {
     const ctx = this.ctx;
     ctx.fillStyle = CONFIG.colors.text;
-    ctx.textAlign = 'left';
     ctx.font = 'bold 18px sans-serif';
-    ctx.fillText('獲得：' + score, 24, 34);
+    ctx.textAlign = 'left';
+    ctx.fillText('スコア：' + hud.score, 24, 32);
+    ctx.textAlign = 'center';
+    // 残り回数は、少なくなったら色を変えて目立たせる
+    ctx.fillStyle = hud.playsLeft <= 2 ? '#ff7aa8' : CONFIG.colors.text;
+    ctx.fillText('のこり ' + hud.playsLeft + ' 回', CONFIG.width / 2, 32);
+    ctx.fillStyle = CONFIG.colors.text;
     ctx.textAlign = 'right';
-    ctx.fillText('残り：' + Prizes.list.length, CONFIG.width - 24, 34);
-    this.drawText(message, CONFIG.width / 2, CONFIG.height - 52);
+    ctx.font = '15px sans-serif';
+    ctx.fillText('ハイスコア：' + hud.highScore, CONFIG.width - 24, 32);
+
+    this.drawText(hud.message, CONFIG.width / 2, CONFIG.height - 52);
     ctx.font = '14px sans-serif';
     ctx.textAlign = 'center';
     ctx.globalAlpha = 0.7;
-    ctx.fillText('効果音：' + (soundOn ? 'オン' : 'オフ') + '（M で切り替え）', CONFIG.width / 2, CONFIG.height - 20);
+    ctx.fillText('効果音：' + (hud.soundOn ? 'オン' : 'オフ') + '（M で切り替え）', CONFIG.width / 2, CONFIG.height - 20);
+    ctx.globalAlpha = 1;
+  },
+
+  // ゲーム終了の画面
+  drawGameOver(result, highScore) {
+    const ctx = this.ctx;
+    const cx = CONFIG.width / 2;
+    ctx.fillStyle = 'rgba(26, 23, 48, 0.82)';
+    ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
+
+    // 枠
+    ctx.fillStyle = CONFIG.colors.frame;
+    ctx.fillRect(cx - 170, 170, 340, 270);
+    ctx.fillStyle = CONFIG.colors.background;
+    ctx.fillRect(cx - 164, 176, 328, 258);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffe066';
+    ctx.font = 'bold 30px sans-serif';
+    ctx.fillText(result.allClear ? 'ぜんぶ ゲット！' : 'ゲーム しゅうりょう', cx, 228);
+
+    ctx.fillStyle = CONFIG.colors.text;
+    ctx.font = 'bold 22px sans-serif';
+    ctx.fillText('スコア：' + result.score + ' 点', cx, 285);
+    ctx.font = '18px sans-serif';
+    ctx.fillText('ハイスコア：' + highScore + ' 点', cx, 320);
+
+    if (result.isRecord) {
+      ctx.fillStyle = '#ff7aa8';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText('しんきろく！', cx, 360);
+    }
+
+    ctx.fillStyle = CONFIG.colors.text;
+    ctx.font = '16px sans-serif';
+    ctx.globalAlpha = 0.6 + 0.4 * Math.abs(Math.sin(performance.now() / 400));
+    ctx.fillText('R か「下ろす」で もういちど', cx, 410);
     ctx.globalAlpha = 1;
   },
 

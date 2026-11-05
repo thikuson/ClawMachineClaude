@@ -37,6 +37,12 @@ const CONFIG = {
     gravity: 900,      // 重力加速度（px/秒^2）
     spawnMinX: 175,    // 最初に置く範囲（取り出し口より右）
     spawnMaxX: 425,
+    rareChance: 0.35,  // レア景品が混ざる確率
+  },
+
+  // ゲームの決まり
+  game: {
+    plays: 10,         // 1 ゲームで遊べる回数
   },
 
   colors: {

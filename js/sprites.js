@@ -9,6 +9,8 @@ const SPRITE_COMMON_COLORS = {
 const PRIZE_SPRITES = [
   {
     name: 'くま',
+    points: 30,  // 獲得したときの点数
+    grip: 0.9,   // つかみやすさ（1 が基準。大きいほどつかみやすく落ちにくい）
     colors: { a: '#c98a5a', b: '#f0d2b0' },
     rows: [
       '..kkk......kkk..',
@@ -31,6 +33,8 @@ const PRIZE_SPRITES = [
   },
   {
     name: 'ねこ',
+    points: 20,  // 獲得したときの点数
+    grip: 1.0,   // つかみやすさ（1 が基準。大きいほどつかみやすく落ちにくい）
     colors: { a: '#a7b0c4', b: '#ffffff' },
     rows: [
       '.k............k.',
@@ -53,6 +57,8 @@ const PRIZE_SPRITES = [
   },
   {
     name: 'ひよこ',
+    points: 10,  // 獲得したときの点数
+    grip: 1.15,   // つかみやすさ（1 が基準。大きいほどつかみやすく落ちにくい）
     colors: { a: '#ffd84d', b: '#ff9d3b' },
     rows: [
       '......kkkk......',
@@ -75,6 +81,8 @@ const PRIZE_SPRITES = [
   },
   {
     name: 'うさぎ',
+    points: 20,  // 獲得したときの点数
+    grip: 1.0,   // つかみやすさ（1 が基準。大きいほどつかみやすく落ちにくい）
     colors: { a: '#ffffff', b: '#ffb3c8' },
     rows: [
       '...kk......kk...',
@@ -97,6 +105,8 @@ const PRIZE_SPRITES = [
   },
   {
     name: 'ペンギン',
+    points: 30,  // 獲得したときの点数
+    grip: 0.9,   // つかみやすさ（1 が基準。大きいほどつかみやすく落ちにくい）
     colors: { a: '#3b4a7a', b: '#ffffff', c: '#ffa63b' },
     rows: [
       '.....kkkkkk.....',
@@ -119,6 +129,8 @@ const PRIZE_SPRITES = [
   },
   {
     name: 'おばけ',
+    points: 40,  // 獲得したときの点数
+    grip: 0.85,   // つかみやすさ（1 が基準。大きいほどつかみやすく落ちにくい）
     colors: { a: '#e9e4ff' },
     rows: [
       '.....kkkkkk.....',
@@ -139,6 +151,31 @@ const PRIZE_SPRITES = [
       '................',
     ],
   },
+  {
+    name: 'きんのほし',
+    points: 100,
+    grip: 0.7,
+    rare: true, // レア景品。たまにしか出ない
+    colors: { a: '#ffd23f', b: '#fff3a8', c: '#d99a00' },
+    rows: [
+      '.......kk.......',
+      '......kbak......',
+      '......kbak......',
+      '.....kbaaak.....',
+      'kkkkkkbaaackkkkk',
+      'kbbbbbaaaaaaaack',
+      '.kcaakaaaakaack.',
+      '..kcakaaaakack..',
+      '...kcaaaaaack...',
+      '...kaapaapaak...',
+      '..kaaaakkaaaak..',
+      '..kaaaaaaaaaak..',
+      '.kaaacckkccaaak.',
+      '.kaacck..kccaak.',
+      'kacck......kccak',
+      'kkk..........kkk',
+    ],
+  },
 ];
 
 // アームの本体（爪は動くので render.js で線として描く）
@@ -155,7 +192,8 @@ const CLAW_HEAD_SPRITE = {
 };
 
 // 文字の行から、1 ドット 1px の小さなキャンバスを作る。描くときに拡大して使う
-function buildSprite(sprite) {
+// silhouette を true にすると、図鑑の「まだ獲得していない」表示用に黒い影で描く
+function buildSprite(sprite, silhouette) {
   const rows = sprite.rows;
   const canvas = document.createElement('canvas');
   canvas.width = rows[0].length;
@@ -166,7 +204,7 @@ function buildSprite(sprite) {
     for (let x = 0; x < row.length; x++) {
       const color = palette[row[x]];
       if (!color) continue;
-      ctx.fillStyle = color;
+      ctx.fillStyle = silhouette ? '#1a1730' : color;
       ctx.fillRect(x, y, 1, 1);
     }
   });
