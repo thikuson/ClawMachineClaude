@@ -37,7 +37,6 @@ const CONFIG = {
     gravity: 900,      // 重力加速度（px/秒^2）
     spawnMinX: 175,    // 最初に置く範囲（取り出し口より右）
     spawnMaxX: 425,
-    colors: ['#ffb84d', '#6fd3ff', '#9cf07a', '#ff7aa8', '#c59bff', '#ffe066'],
   },
 
   colors: {

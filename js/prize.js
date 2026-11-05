@@ -6,6 +6,10 @@ const Prizes = {
   reset() {
     const p = CONFIG.prize;
     this.list = [];
+    // 種類がかたよらないように、順番に割り当ててから混ぜる
+    const types = [];
+    for (let i = 0; i < p.count; i++) types.push(i % PRIZE_SPRITES.length);
+    types.sort(() => Math.random() - 0.5);
     for (let i = 0; i < p.count; i++) {
       const r = p.minRadius + Math.random() * (p.maxRadius - p.minRadius);
       this.list.push({
@@ -14,7 +18,7 @@ const Prizes = {
         vx: 0,
         vy: 0,
         r: r,
-        color: p.colors[i % p.colors.length],
+        type: types[i], // PRIZE_SPRITES の番号
         held: false,
       });
     }

@@ -9,7 +9,7 @@ const Claw = {
   held: null,     // つかんでいる景品
   holdOffsetX: 0, // つかんだ景品の、アーム中心からの横のずれ
   slipAt: -1,     // 景品が滑り落ちるまでの時間（-1 なら落ちない）
-  onResult: null, // 結果を画面に伝える関数（main.js で設定）
+  onResult: null, // 出来事（drop / grab / miss / slip）を伝える関数（main.js で設定）
 
   reset() {
     const c = CONFIG.claw;
@@ -40,7 +40,10 @@ const Claw = {
         if (Input.isDown('ArrowLeft')) this.x -= c.moveSpeed * dt;
         if (Input.isDown('ArrowRight')) this.x += c.moveSpeed * dt;
         this.x = Math.max(c.minX, Math.min(c.maxX, this.x));
-        if (Input.wasPressed('Space')) this.setState('down');
+        if (Input.wasPressed('Space')) {
+          this.setState('down');
+          this.report('drop');
+        }
         break;
       }
 
@@ -141,6 +144,7 @@ const Claw = {
     }
     this.held = target;
     target.held = true;
+    this.report('grab');
     target.vx = 0;
     target.vy = 0;
     this.holdOffsetX = (target.x - this.x) * 0.4;
