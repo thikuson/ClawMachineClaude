@@ -24,3 +24,28 @@ body {
 }
 
 .help { margin: 12px 0 0; font-size: 0.9rem; opacity: 0.8; }
+
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.controls button {
+  min-width: 64px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 10px;
+  background: #5a4f8c;
+  color: #f4f1ff;
+  font-size: 1.1rem;
+  font-weight: bold;
+  touch-action: none;   /* 長押しでの拡大やスクロールを防ぐ */
+  user-select: none;
+  cursor: pointer;
+}
+
+.controls button:active { background: #7a6db8; }
+
+.controls .drop { background: #e85d8a; min-width: 96px; }

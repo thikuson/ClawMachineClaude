@@ -4,14 +4,59 @@
   Render.init(canvas);
   Input.init();
 
+  const HELP = '← → で移動、スペースで下ろす';
+  const MESSAGES = {
+    get: 'ゲット！',
+    miss: 'つかめなかった…',
+    slip: 'おしい！ 落ちちゃった',
+    clear: '全部獲得！ R でリセット',
+  };
+
+  let score = 0;
+  let message = HELP;
+  let messageTimer = 0;
+
+  function showMessage(key) {
+    message = MESSAGES[key];
+    messageTimer = 2;
+  }
+
+  function resetGame() {
+    score = 0;
+    message = HELP;
+    messageTimer = 0;
+    Prizes.reset();
+    Claw.reset();
+  }
+
+  Claw.onResult = showMessage;
+  resetGame();
+
   let lastTime = performance.now();
 
-  // 状態の更新（ステップ2でアームの動きなどを追加する）
-  function update(dt) {}
+  function update(dt) {
+    if (Input.wasPressed('KeyR')) resetGame();
+
+    Claw.update(dt, Prizes.list);
+    const captured = Prizes.update(dt);
+    if (captured > 0) {
+      score += captured;
+      showMessage(Prizes.list.length === 0 ? 'clear' : 'get');
+      if (Prizes.list.length === 0) messageTimer = Infinity;
+    }
+
+    // 一定時間たったら操作説明に戻す
+    if (messageTimer > 0) {
+      messageTimer -= dt;
+      if (messageTimer <= 0) message = HELP;
+    }
+  }
 
   function draw() {
     Render.drawMachine();
-    Render.drawText('じゅんび ちゅう…', CONFIG.width / 2, CONFIG.height - 40);
+    Render.drawPrizes(Prizes.list);
+    Render.drawClaw(Claw);
+    Render.drawHud(score, message);
   }
 
   function loop(now) {

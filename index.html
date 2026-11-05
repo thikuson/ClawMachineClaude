@@ -10,12 +10,19 @@
   <main class="app">
     <h1 class="title">クレーンゲーム</h1>
     <canvas id="game" width="480" height="640" aria-label="クレーンゲームの画面"></canvas>
-    <p class="help">← → で移動、スペースでアームを下ろす（ステップ2で実装予定）</p>
+    <div class="controls">
+      <button type="button" data-key="ArrowLeft" aria-label="左へ移動">←</button>
+      <button type="button" data-key="Space" class="drop">下ろす</button>
+      <button type="button" data-key="ArrowRight" aria-label="右へ移動">→</button>
+    </div>
+    <p class="help">キーボード：← → で移動、スペースで下ろす、R でリセット</p>
   </main>
 
   <!-- ES モジュールを使わず、読み込み順で依存関係を解決する -->
   <script src="js/config.js"></script>
   <script src="js/input.js"></script>
+  <script src="js/prize.js"></script>
+  <script src="js/claw.js"></script>
   <script src="js/render.js"></script>
   <script src="js/main.js"></script>
 </body>
