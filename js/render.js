@@ -74,11 +74,21 @@ const Render = {
 
   // 景品。当たり判定の円より少し大きめにドット絵を描く
   drawPrizes(prizes) {
+    for (const p of prizes) this.drawPrizeImage(p.type, p.x, p.y, Math.round(p.r * 2.2), p.angle);
+  },
+
+  // 景品の絵を (x, y) を中心に描く。転がる景品は angle だけ回転させる
+  drawPrizeImage(type, x, y, size, angle) {
     const ctx = this.ctx;
-    for (const p of prizes) {
-      const size = Math.round(p.r * 2.2);
-      ctx.drawImage(this.prizeImages[p.type],
-        Math.round(p.x - size / 2), Math.round(p.y - size / 2), size, size);
+    const img = this.prizeImages[type];
+    if (PRIZE_SPRITES[type].round && angle) {
+      ctx.save();
+      ctx.translate(Math.round(x), Math.round(y));
+      ctx.rotate(angle);
+      ctx.drawImage(img, -size / 2, -size / 2, size, size);
+      ctx.restore();
+    } else {
+      ctx.drawImage(img, Math.round(x - size / 2), Math.round(y - size / 2), size, size);
     }
   },
 
@@ -88,13 +98,14 @@ const Render = {
     const c = CONFIG.colors;
     const railY = CONFIG.case.y + 13;
     const headTop = claw.y - 10;
+    const hx = claw.headX(); // 揺れを含めたアーム本体の位置
 
-    // ケーブル
+    // ケーブル（揺れているときは斜めになる）
     ctx.strokeStyle = c.cable;
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(claw.x, railY);
-    ctx.lineTo(claw.x, headTop);
+    ctx.lineTo(hx, headTop);
     ctx.stroke();
 
     // レールの上の台車
@@ -111,16 +122,16 @@ const Render = {
     ctx.lineJoin = 'miter';
     for (const side of [-1, 1]) {
       ctx.beginPath();
-      ctx.moveTo(claw.x + side * 8, claw.y + 6);
-      ctx.lineTo(claw.x + side * (spread + 8), elbowY);
-      ctx.lineTo(claw.x + side * spread, tipY);
-      ctx.lineTo(claw.x + side * (spread - 7), tipY - 2); // 先の返し
+      ctx.moveTo(hx + side * 8, claw.y + 6);
+      ctx.lineTo(hx + side * (spread + 8), elbowY);
+      ctx.lineTo(hx + side * spread, tipY);
+      ctx.lineTo(hx + side * (spread - 7), tipY - 2); // 先の返し
       ctx.stroke();
     }
 
     // 本体（ドット絵を 3 倍に拡大）
     const img = this.clawHeadImage;
-    ctx.drawImage(img, Math.round(claw.x - img.width * 1.5), Math.round(headTop - 2),
+    ctx.drawImage(img, Math.round(hx - img.width * 1.5), Math.round(headTop - 2),
       img.width * 3, img.height * 3);
   },
 

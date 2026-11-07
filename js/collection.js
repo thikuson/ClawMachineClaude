@@ -17,8 +17,16 @@ const Collection = {
   load() {
     try {
       const data = JSON.parse(localStorage.getItem(this.STORAGE_KEY) || '{}');
-      if (Array.isArray(data.counts)) {
-        data.counts.forEach((n, i) => { if (i < this.counts.length) this.counts[i] = n || 0; });
+      // 景品の種類を増やしても記録がずれないように、名前ごとに数を保存している
+      let byName = data.countsByName;
+      if (!byName && Array.isArray(data.counts)) {
+        // 以前の形式（並び順の番号で保存）を、そのころの並び順で名前に置き換える
+        const oldOrder = ['くま', 'ねこ', 'ひよこ', 'うさぎ', 'ペンギン', 'おばけ', 'きんのほし'];
+        byName = {};
+        data.counts.forEach((n, i) => { if (oldOrder[i]) byName[oldOrder[i]] = n || 0; });
+      }
+      if (byName) {
+        PRIZE_SPRITES.forEach((s, i) => { this.counts[i] = byName[s.name] || 0; });
       }
       if (data.highScores) Object.assign(this.highScores, data.highScores);
       // 以前の形式（ハイスコアが 1 つだけ）はクラシックモードの記録として引き継ぐ
@@ -31,7 +39,7 @@ const Collection = {
   save() {
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify({
-        counts: this.counts,
+        countsByName: Object.fromEntries(PRIZE_SPRITES.map((s, i) => [s.name, this.counts[i]])),
         highScores: this.highScores,
       }));
     } catch (e) {

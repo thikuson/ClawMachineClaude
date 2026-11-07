@@ -9,6 +9,7 @@ const Claw = {
   held: null,     // つかんでいる景品
   holdOffsetX: 0, // つかんだ景品の、アーム中心からの横のずれ
   slipAt: -1,     // 景品が滑り落ちるまでの時間（-1 なら落ちない）
+  swing: new Swing(), // 左右の揺れ
   canDrop: () => true, // 下ろしてよいか（プレイ回数が残っているか。main.js で設定）
   onResult: null, // 出来事（drop / grab / miss / slip）を伝える関数（main.js で設定）
 
@@ -19,6 +20,12 @@ const Claw = {
     this.y = c.homeY;
     this.openness = 1;
     this.held = null;
+    this.swing.reset(this.x);
+  },
+
+  // 揺れを含めた、アーム本体の実際の x 座標
+  headX() {
+    return this.x + this.swing.offset;
   },
 
   // 爪の先の y 座標
@@ -35,6 +42,7 @@ const Claw = {
   update(dt, prizes) {
     const c = CONFIG.claw;
     this.timer += dt;
+    this.swing.update(dt, this.x);
 
     switch (this.state) {
       case 'idle': {
@@ -53,7 +61,7 @@ const Claw = {
         // 床に着くか、真下の景品の中ほどまで下りたら止める
         const touchFloor = this.tipY() >= CONFIG.floorY - 2;
         const touchPrize = prizes.some((p) =>
-          Math.abs(p.x - this.x) < p.r && this.tipY() >= p.y);
+          Math.abs(p.x - this.headX()) < p.r && this.tipY() >= p.y);
         if (touchFloor || touchPrize) this.setState('close');
         break;
       }
@@ -121,7 +129,7 @@ const Claw = {
     let best = null;
     let bestDx = Infinity;
     for (const p of prizes) {
-      const dx = Math.abs(p.x - this.x);
+      const dx = Math.abs(p.x - this.headX());
       const dy = Math.abs(p.y - this.tipY());
       if (dx < CONFIG.claw.tipOpen && dy < p.r + 6 && dx < bestDx) {
         best = p;
@@ -137,19 +145,25 @@ const Claw = {
       this.report('miss');
       return;
     }
-    const offset = Math.abs(target.x - this.x) / target.r; // 0 なら真ん中
+    const offset = Math.abs(target.x - this.headX()) / target.r; // 0 なら真ん中
     const grip = PRIZE_SPRITES[target.type].grip;
     const grabChance = Math.max(0.1, Math.min(0.95, (1.05 - offset * 0.8) * grip));
     if (Math.random() > grabChance) {
+      // 転がる景品は、爪に押されて逃げていく
+      if (PRIZE_SPRITES[target.type].round) {
+        const dir = Math.sign(target.x - this.headX()) || (Math.random() < 0.5 ? -1 : 1);
+        target.vx = dir * (80 + Math.random() * 80);
+      }
       this.report('miss');
       return;
     }
     this.held = target;
     target.held = true;
     this.report('grab');
+    this.swing.kick(CONFIG.swing.grabKick);
     target.vx = 0;
     target.vy = 0;
-    this.holdOffsetX = (target.x - this.x) * 0.4;
+    this.holdOffsetX = (target.x - this.headX()) * 0.4;
 
     // 持ち上げたあと滑り落ちるかどうかも、ここで決めておく
     const slipChance = Math.max(0.05, Math.min(0.8, (offset * 0.6 + 0.1) / grip));
@@ -160,24 +174,27 @@ const Claw = {
   // つかんだ景品をアームと一緒に動かす
   carryHeld() {
     if (!this.held) return;
-    this.held.x = this.x + this.holdOffsetX;
+    this.held.x = this.headX() + this.holdOffsetX;
     this.held.y = this.tipY() - this.held.r * 0.35;
   },
 
-  // 決めておいた時間が来たら景品を落とす
+  // 決めておいた時間が来たか、揺れが大きすぎたら景品を落とす
   checkSlip(dt) {
-    if (!this.held || this.slipAt < 0) return;
+    if (!this.held) return;
     this.carryTime += dt;
-    if (this.carryTime >= this.slipAt) {
+    const grip = PRIZE_SPRITES[this.held.type].grip;
+    const timeUp = this.slipAt >= 0 && this.carryTime >= this.slipAt;
+    if (timeUp || Swing.shouldSlip(dt, [this.swing], grip)) {
       this.dropHeld();
       this.openness = Math.min(1, this.openness + 0.15);
       this.report('slip');
     }
   },
 
+  // 景品を離す。揺れの勢いが残っていれば、その向きに飛んでいく
   dropHeld() {
     this.held.held = false;
-    this.held.vx = 0;
+    this.held.vx = this.swing.vel + this.swing.prevSpeed;
     this.held.vy = 0;
     this.held = null;
   },

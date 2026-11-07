@@ -32,10 +32,10 @@ const ButtonRender = {
 
     // 奥にあるものから順に描くと、手前のものが前に重なる
     const items = prizes.map((p) => ({ z: p.z, draw: () => this.drawPrize(ctx, p) }));
-    items.push({ z: claw.z - 0.5, draw: () => this.drawClaw(ctx, claw, mode) });
+    items.push({ z: mode.headZ() - 0.5, draw: () => this.drawClaw(ctx, claw, mode) });
     // 影は床の上なので、すべての物より先に描く
     for (const p of prizes) this.drawShadow(ctx, p.x, p.z, p.r, p.h);
-    this.drawShadow(ctx, claw.x, claw.z, 18, claw.h - CONFIG.claw.armLength);
+    this.drawShadow(ctx, mode.headX(), mode.headZ(), 18, claw.h - CONFIG.claw.armLength);
     items.sort((a, b) => b.z - a.z);
     for (const item of items) item.draw();
 
@@ -134,15 +134,15 @@ const ButtonRender = {
       this.floorPath(ctx, 0, 0, u.chute.w, u.chute.d);
       ctx.clip();
     }
-    ctx.drawImage(Render.prizeImages[p.type],
-      Math.round(center.x - size / 2), Math.round(center.y - size / 2), size, size);
+    Render.drawPrizeImage(p.type, center.x, center.y, size, p.angle);
     ctx.restore();
   },
 
   drawClaw(ctx, claw, mode) {
     const c = CONFIG.colors;
     const u = CONFIG.ufo;
-    const head = this.project(claw.x, claw.z, claw.h);
+    // 本体は揺れを含めた位置、ケーブルの上端は台車の位置
+    const head = this.project(mode.headX(), mode.headZ(), claw.h);
     const top = this.project(claw.x, claw.z, u.topH + 40);
     const k = head.k;
 

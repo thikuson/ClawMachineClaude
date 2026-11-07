@@ -9,6 +9,8 @@ const Prizes = {
     // 種類がかたよらないように、順番に割り当ててから混ぜる
     const normalTypes = [];
     PRIZE_SPRITES.forEach((s, i) => { if (!s.rare) normalTypes.push(i); });
+    // 景品の種類が置く数より多いので、毎回ちがう組み合わせになるよう混ぜてから選ぶ
+    normalTypes.sort(() => Math.random() - 0.5);
     const types = [];
     for (let i = 0; i < p.count; i++) types.push(normalTypes[i % normalTypes.length]);
     // レア景品は、出るときだけ 1 個と入れ替える
@@ -25,6 +27,7 @@ const Prizes = {
         vy: 0,
         r: r,
         type: types[i], // PRIZE_SPRITES の番号
+        angle: 0,       // 転がる景品の回転の角度
         held: false,
       });
     }
@@ -39,12 +42,13 @@ const Prizes = {
     const chuteRight = chute.x + chute.w;
     const captured = [];
 
-    // 重力と移動
+    // 重力と移動。転がる景品は、進んだ分だけ回転させる
     for (const p of this.list) {
       if (p.held) continue;
       p.vy += g * dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
+      if (PRIZE_SPRITES[p.type].round) p.angle += p.vx * dt / p.r;
     }
 
     // 景品どうしの重なりを数回に分けて解消する
@@ -100,7 +104,8 @@ const Prizes = {
     if (!overChute && p.y + p.r > floorY) {
       p.y = floorY - p.r;
       if (p.vy > 0) p.vy = 0;
-      p.vx *= 0.85; // 床との摩擦
+      // 床との摩擦。転がる景品はほとんど止まらない
+      p.vx *= PRIZE_SPRITES[p.type].round ? 0.997 : 0.85;
     }
     // ケースの左右の壁
     if (p.x - p.r < box.x) { p.x = box.x + p.r; p.vx = Math.abs(p.vx) * 0.3; }

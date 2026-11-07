@@ -17,6 +17,8 @@ const ButtonMode = {
     holdOffsetZ: 0,
     slipAt: -1,
     carryTime: 0,
+    swingX: new Swing(), // 左右の揺れ
+    swingZ: new Swing(), // 奥行きの揺れ
   },
 
   start() {
@@ -35,6 +37,8 @@ const ButtonMode = {
     c.h = u.topH;
     c.openness = 1;
     c.held = null;
+    c.swingX.reset(c.x);
+    c.swingZ.reset(c.z);
     this.setState('ready1');
   },
 
@@ -44,6 +48,7 @@ const ButtonMode = {
     const p = CONFIG.prize;
     const normalTypes = [];
     PRIZE_SPRITES.forEach((s, i) => { if (!s.rare) normalTypes.push(i); });
+    normalTypes.sort(() => Math.random() - 0.5);
     const types = [];
     for (let i = 0; i < p.count; i++) types.push(normalTypes[i % normalTypes.length]);
     if (Math.random() < p.rareChance) types[0] = PRIZE_SPRITES.findIndex((s) => s.rare);
@@ -58,7 +63,7 @@ const ButtonMode = {
         const z = u.spawnMinZ + Math.random() * (u.spawnMaxZ - u.spawnMinZ);
         const overlaps = this.prizes.some((q) => Math.hypot(q.x - x, q.z - z) < q.r + r + 4);
         if (!overlaps || tries === 49) {
-          this.prizes.push({ x, z, h: 0, vh: 0, r, type, held: false });
+          this.prizes.push({ x, z, h: 0, vx: 0, vz: 0, vh: 0, r, type, angle: 0, held: false });
           break;
         }
       }
@@ -91,6 +96,15 @@ const ButtonMode = {
     return this.claw.h - CONFIG.claw.armLength;
   },
 
+  // 揺れを含めた、アーム本体の実際の位置
+  headX() {
+    return this.claw.x + this.claw.swingX.offset;
+  },
+
+  headZ() {
+    return this.claw.z + this.claw.swingZ.offset;
+  },
+
   tipSpread() {
     const c = CONFIG.claw;
     return c.tipClosed + (c.tipOpen - c.tipClosed) * this.claw.openness;
@@ -117,6 +131,8 @@ const ButtonMode = {
     const cc = CONFIG.claw;
     const c = this.claw;
     c.timer += dt;
+    c.swingX.update(dt, c.x);
+    c.swingZ.update(dt, c.z);
 
     switch (c.state) {
       case 'ready1':
@@ -149,7 +165,7 @@ const ButtonMode = {
         // 床に着くか、真下の景品の中ほどまで下りたら止める
         const touchFloor = this.tipH() <= 2;
         const touchPrize = this.prizes.some((p) =>
-          Math.hypot(p.x - c.x, p.z - c.z) < p.r && this.tipH() <= p.h + p.r);
+          Math.hypot(p.x - this.headX(), p.z - this.headZ()) < p.r && this.tipH() <= p.h + p.r);
         if (touchFloor || touchPrize) this.setState('close');
         break;
       }
@@ -212,7 +228,7 @@ const ButtonMode = {
     let best = null;
     let bestDist = Infinity;
     for (const p of this.prizes) {
-      const dist = Math.hypot(p.x - c.x, p.z - c.z);
+      const dist = Math.hypot(p.x - this.headX(), p.z - this.headZ());
       const dy = Math.abs(p.h + p.r - this.tipH());
       if (dist < CONFIG.claw.tipOpen && dy < p.r + 6 && dist < bestDist) {
         best = p;
@@ -229,18 +245,31 @@ const ButtonMode = {
       this.report('miss');
       return;
     }
-    const offset = Math.hypot(target.x - c.x, target.z - c.z) / target.r;
+    const offset = Math.hypot(target.x - this.headX(), target.z - this.headZ()) / target.r;
     const grip = PRIZE_SPRITES[target.type].grip;
     const grabChance = Math.max(0.1, Math.min(0.95, (1.05 - offset * 0.8) * grip));
     if (Math.random() > grabChance) {
+      // 転がる景品は、爪に押されて逃げていく
+      if (PRIZE_SPRITES[target.type].round) {
+        let dx = target.x - this.headX();
+        let dz = target.z - this.headZ();
+        const len = Math.hypot(dx, dz);
+        if (len < 0.01) { dx = Math.random() - 0.5; dz = Math.random() - 0.5; }
+        const speed = 80 + Math.random() * 80;
+        const n = Math.hypot(dx, dz);
+        target.vx = dx / n * speed;
+        target.vz = dz / n * speed;
+      }
       this.report('miss');
       return;
     }
     c.held = target;
     target.held = true;
     target.vh = 0;
-    c.holdOffsetX = (target.x - c.x) * 0.4;
-    c.holdOffsetZ = (target.z - c.z) * 0.4;
+    c.holdOffsetX = (target.x - this.headX()) * 0.4;
+    c.holdOffsetZ = (target.z - this.headZ()) * 0.4;
+    c.swingX.kick(CONFIG.swing.grabKick);
+    c.swingZ.kick(CONFIG.swing.grabKick);
     this.report('grab');
 
     const slipChance = Math.max(0.05, Math.min(0.8, (offset * 0.6 + 0.1) / grip));
@@ -252,22 +281,26 @@ const ButtonMode = {
   carryHeld(dt) {
     const c = this.claw;
     if (!c.held) return;
-    c.held.x = c.x + c.holdOffsetX;
-    c.held.z = c.z + c.holdOffsetZ;
+    c.held.x = this.headX() + c.holdOffsetX;
+    c.held.z = this.headZ() + c.holdOffsetZ;
     c.held.h = this.tipH() - c.held.r * 0.65;
-    if (c.slipAt < 0) return;
     c.carryTime += dt;
-    if (c.carryTime >= c.slipAt) {
+    const grip = PRIZE_SPRITES[c.held.type].grip;
+    const timeUp = c.slipAt >= 0 && c.carryTime >= c.slipAt;
+    if (timeUp || Swing.shouldSlip(dt, [c.swingX, c.swingZ], grip)) {
       this.dropHeld();
       c.openness = Math.min(1, c.openness + 0.15);
       this.report('slip');
     }
   },
 
+  // 景品を離す。揺れの勢いが残っていれば、その向きに飛んでいく
   dropHeld() {
     const c = this.claw;
     c.held.held = false;
     c.held.vh = 0;
+    c.held.vx = c.swingX.vel + c.swingX.prevSpeed;
+    c.held.vz = c.swingZ.vel + c.swingZ.prevSpeed;
     c.held = null;
   },
 
@@ -284,6 +317,17 @@ const ButtonMode = {
 
     for (const p of this.prizes) {
       if (p.held) continue;
+      // 横の動き。床の上では摩擦で止まるが、転がる景品はなかなか止まらない
+      const round = PRIZE_SPRITES[p.type].round;
+      p.x += p.vx * dt;
+      p.z += p.vz * dt;
+      if (p.h <= 0) {
+        const friction = Math.pow(round ? 0.6 : 0.002, dt); // 1 秒あたりに残る速さの割合
+        p.vx *= friction;
+        p.vz *= friction;
+      }
+      if (round) p.angle += p.vx * dt / p.r;
+
       if (p.h > 0 || overChute(p)) {
         p.vh -= g * dt;
         p.h += p.vh * dt;
@@ -310,9 +354,22 @@ const ButtonMode = {
           a.z -= dz / dist * overlap / 2;
           b.x += dx / dist * overlap / 2;
           b.z += dz / dist * overlap / 2;
+          // ぶつかったら、近づく向きの速さを分け合う（転がる景品が他の景品を押す）
+          const nx = dx / dist;
+          const nz = dz / dist;
+          const rel = (b.vx - a.vx) * nx + (b.vz - a.vz) * nz;
+          if (rel < 0) {
+            a.vx += nx * rel * 0.5;
+            a.vz += nz * rel * 0.5;
+            b.vx -= nx * rel * 0.5;
+            b.vz -= nz * rel * 0.5;
+          }
         }
       }
+      // 壁に当たったら跳ね返る
       for (const p of onFloor) {
+        if (p.x < p.r || p.x > u.worldW - p.r) p.vx = -p.vx * 0.5;
+        if (p.z < p.r || p.z > u.worldD - p.r) p.vz = -p.vz * 0.5;
         p.x = Math.max(p.r, Math.min(u.worldW - p.r, p.x));
         p.z = Math.max(p.r, Math.min(u.worldD - p.r, p.z));
       }
