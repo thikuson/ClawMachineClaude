@@ -43,6 +43,11 @@ const Input = {
     return !!this.keys[code];
   },
 
+  // 画面を切り替えたときに、前の画面で押されたキーが残らないように消す
+  clearPressed() {
+    this.pressedQueue = {};
+  },
+
   // 押された瞬間かどうか（1 回読むと消える）
   wasPressed(code) {
     const pressed = !!this.pressedQueue[code];

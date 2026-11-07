@@ -1,8 +1,9 @@
 // 獲得一覧（図鑑）とハイスコア。ブラウザに保存して、次に開いたときも残す
+// 図鑑はモード共通、ハイスコアはモードごとに分けて記録する
 const Collection = {
   STORAGE_KEY: 'clawMachineClaude.save',
   counts: [],      // 種類ごとの、これまでに獲得した数
-  highScore: 0,
+  highScores: { classic: 0, button: 0 },
   listElement: null,
 
   init(listElement) {
@@ -19,7 +20,9 @@ const Collection = {
       if (Array.isArray(data.counts)) {
         data.counts.forEach((n, i) => { if (i < this.counts.length) this.counts[i] = n || 0; });
       }
-      this.highScore = data.highScore || 0;
+      if (data.highScores) Object.assign(this.highScores, data.highScores);
+      // 以前の形式（ハイスコアが 1 つだけ）はクラシックモードの記録として引き継ぐ
+      if (data.highScore && !data.highScores) this.highScores.classic = data.highScore;
     } catch (e) {
       // 読めなければ最初からにする
     }
@@ -29,7 +32,7 @@ const Collection = {
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify({
         counts: this.counts,
-        highScore: this.highScore,
+        highScores: this.highScores,
       }));
     } catch (e) {
       // 保存できなくてもゲームは続ける
@@ -46,9 +49,9 @@ const Collection = {
   },
 
   // ゲーム終了時に呼ぶ。ハイスコアを更新したら true を返す
-  submitScore(score) {
-    if (score <= this.highScore) return false;
-    this.highScore = score;
+  submitScore(modeKey, score) {
+    if (score <= (this.highScores[modeKey] || 0)) return false;
+    this.highScores[modeKey] = score;
     this.save();
     return true;
   },

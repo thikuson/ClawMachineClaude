@@ -9,17 +9,48 @@
 <body>
   <main class="app">
     <h1 class="title">クレーンゲーム</h1>
-    <canvas id="game" width="480" height="640" aria-label="クレーンゲームの画面"></canvas>
-    <div class="controls">
+
+    <div class="screen">
+      <canvas id="game" width="480" height="640" aria-label="クレーンゲームの画面"></canvas>
+
+      <!-- メニュー画面。キャンバスの上に重ねて表示する -->
+      <div id="menu" class="menu">
+        <p class="menu-title">あそびかたを えらんでね</p>
+        <button type="button" class="menu-item" data-mode="classic">
+          <span class="menu-name">1. クラシック</span>
+          <span class="menu-desc">← → で動かして、スペースで下ろす</span>
+          <span class="menu-score">ハイスコア：<span id="hiscore-classic">0</span></span>
+        </button>
+        <button type="button" class="menu-item" data-mode="button">
+          <span class="menu-name">2. 2ボタン</span>
+          <span class="menu-desc">① で右へ、② で奥へ。② を離すと下りる</span>
+          <span class="menu-score">ハイスコア：<span id="hiscore-button">0</span></span>
+        </button>
+        <p class="menu-hint">↑ ↓ で選んで Enter、または 1 / 2 キー</p>
+      </div>
+    </div>
+
+    <!-- クラシックモードの操作ボタン -->
+    <div id="controls-classic" class="controls" hidden>
       <button type="button" data-key="ArrowLeft" aria-label="左へ移動">←</button>
       <button type="button" data-key="Space" class="drop">下ろす</button>
       <button type="button" data-key="ArrowRight" aria-label="右へ移動">→</button>
     </div>
+
+    <!-- 2 ボタンモードの操作ボタン -->
+    <div id="controls-button" class="controls" hidden>
+      <button type="button" data-key="ArrowRight" class="big" aria-label="ボタン1：右へ移動">①<br>→</button>
+      <button type="button" data-key="ArrowUp" class="big" aria-label="ボタン2：奥へ移動">②<br>↑</button>
+    </div>
+
+    <button type="button" id="back-to-menu" class="back" hidden>メニューへ（Esc）</button>
+
     <section class="zukan" aria-label="獲得一覧">
       <h2>けいひん ずかん <span id="zukan-progress"></span></h2>
       <ul id="zukan-list" class="zukan-list"></ul>
     </section>
-    <p class="help">キーボード：← → で移動、スペースで下ろす、R でリセット、M で効果音の切り替え</p>
+    <p id="help-classic" class="help" hidden>キーボード：← → で移動、スペースで下ろす、R でリセット、M で効果音の切り替え</p>
+    <p id="help-button" class="help" hidden>キーボード：→（または 1）が ①、↑（または 2）が ②。R でリセット、M で効果音の切り替え</p>
   </main>
 
   <!-- ES モジュールを使わず、読み込み順で依存関係を解決する -->
@@ -32,6 +63,10 @@
   <script src="js/sound.js"></script>
   <script src="js/collection.js"></script>
   <script src="js/render.js"></script>
+  <script src="js/render_button.js"></script>
+  <script src="js/session.js"></script>
+  <script src="js/modes/classic.js"></script>
+  <script src="js/modes/button.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

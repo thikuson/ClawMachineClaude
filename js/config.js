@@ -40,6 +40,30 @@ const CONFIG = {
     rareChance: 0.35,  // レア景品が混ざる確率
   },
 
+  // 2 ボタンモード。景品を左右（x）と奥行き（z）の床に置き、斜め前から見た画面で描く
+  // 座標の単位は「世界」の長さ。画面上の位置は render_button.js の project() で計算する
+  ufo: {
+    worldW: 400,       // 床の横幅
+    worldD: 200,       // 床の奥行き
+    topH: 400,         // アームの待機する高さ
+    frontY: 515,       // 床の手前の辺の、画面上の y 座標
+    backY: 365,        // 床の奥の辺の、画面上の y 座標
+    centerX: 240,      // 画面の中心の x 座標
+    backScale: 0.65,   // 奥に行くほど小さく見せる割合（奥の辺での大きさ）
+    home: { x: 45, z: 40 },          // 開始位置（取り出し口の真上）
+    chute: { w: 90, d: 80 },         // 取り出し口（左手前の角の範囲）
+    maxX: 380,         // ① で動ける右の端
+    maxZ: 185,         // ② で動ける奥の端
+    moveSpeed: 110,    // ① ② で動く速さ
+    downSpeed: 150,
+    upSpeed: 120,
+    returnSpeed: 160,
+    spawnMinX: 130,    // 景品を置く範囲
+    spawnMaxX: 375,
+    spawnMinZ: 30,
+    spawnMaxZ: 180,
+  },
+
   // ゲームの決まり
   game: {
     plays: 10,         // 1 ゲームで遊べる回数

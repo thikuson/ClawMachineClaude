@@ -149,7 +149,7 @@ const Render = {
   },
 
   // ゲーム終了の画面
-  drawGameOver(result, highScore) {
+  drawGameOver(result, highScore, restartHint) {
     const ctx = this.ctx;
     const cx = CONFIG.width / 2;
     ctx.fillStyle = 'rgba(26, 23, 48, 0.82)';
@@ -181,7 +181,7 @@ const Render = {
     ctx.fillStyle = CONFIG.colors.text;
     ctx.font = '16px sans-serif';
     ctx.globalAlpha = 0.6 + 0.4 * Math.abs(Math.sin(performance.now() / 400));
-    ctx.fillText('R か「下ろす」で もういちど', cx, 410);
+    ctx.fillText(restartHint, cx, 410);
     ctx.globalAlpha = 1;
   },
 

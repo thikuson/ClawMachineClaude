@@ -95,3 +95,72 @@ body {
 .zukan-info { font-size: 0.75rem; opacity: 0.8; }
 
 .zukan-item.unknown .zukan-name { opacity: 0.6; }
+
+/* キャンバスとメニューを重ねるための入れ物 */
+.screen { position: relative; max-width: 480px; margin: 0 auto; }
+
+[hidden] { display: none !important; }
+
+/* メニュー画面 */
+.menu {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  padding: 24px;
+  border-radius: 12px;
+  background: rgba(26, 23, 48, 0.85);
+}
+
+.menu-title { margin: 0 0 8px; font-size: 1.3rem; font-weight: bold; color: #ffe066; }
+
+.menu-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: min(320px, 100%);
+  padding: 14px 16px;
+  border: 3px solid #5a4f8c;
+  border-radius: 12px;
+  background: #2b2745;
+  color: #f4f1ff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-item.selected, .menu-item:hover { border-color: #ffe066; background: #3d3866; }
+
+.menu-name { font-size: 1.2rem; font-weight: bold; }
+
+.menu-desc { font-size: 0.85rem; opacity: 0.85; }
+
+.menu-score { font-size: 0.8rem; color: #ffe066; }
+
+.menu-hint { margin: 8px 0 0; font-size: 0.8rem; opacity: 0.7; }
+
+/* 2 ボタンモードの大きなボタン */
+.controls .big {
+  min-width: 96px;
+  padding: 10px 16px;
+  border-radius: 50%;
+  aspect-ratio: 1;
+  background: #ffb84d;
+  color: #2b2745;
+  font-size: 1.2rem;
+  line-height: 1.3;
+}
+
+.controls .big:active { background: #ffe066; }
+
+.back {
+  margin-top: 12px;
+  padding: 6px 14px;
+  border: 1px solid #5a4f8c;
+  border-radius: 8px;
+  background: transparent;
+  color: #f4f1ff;
+  cursor: pointer;
+}
