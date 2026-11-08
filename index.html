@@ -16,17 +16,42 @@
       <!-- メニュー画面。キャンバスの上に重ねて表示する -->
       <div id="menu" class="menu">
         <p class="menu-title">あそびかたを えらんでね</p>
-        <button type="button" class="menu-item" data-mode="classic">
-          <span class="menu-name">1. クラシック</span>
-          <span class="menu-desc">← → で動かして、スペースで下ろす</span>
-          <span class="menu-score">ハイスコア：<span id="hiscore-classic">0</span></span>
-        </button>
-        <button type="button" class="menu-item" data-mode="button">
-          <span class="menu-name">2. 2ボタン</span>
-          <span class="menu-desc">① で右へ、② で奥へ。② を離すと下りる</span>
-          <span class="menu-score">ハイスコア：<span id="hiscore-button">0</span></span>
-        </button>
-        <p class="menu-hint">↑ ↓ で選んで Enter、または 1 / 2 キー</p>
+        <!-- 左の列が かんたん（揺れなし）、右の列が むずかしい（揺れあり）。行ごとに同じ遊び方 -->
+        <div class="menu-grid">
+          <p class="menu-level easy">かんたん<small>揺れなし</small></p>
+          <p class="menu-level hard">むずかしい<small>揺れあり</small></p>
+          <button type="button" class="menu-item easy" data-mode="classic" data-level="easy">
+            <span class="menu-name">1. クラシック</span>
+            <span class="menu-desc">← → で動かして、スペースで下ろす</span>
+            <span class="menu-score">ハイスコア：<span data-score-for="classic" data-score-level="easy">0</span></span>
+          </button>
+          <button type="button" class="menu-item hard" data-mode="classic" data-level="hard">
+            <span class="menu-name">4. クラシック</span>
+            <span class="menu-desc">← → で動かして、スペースで下ろす</span>
+            <span class="menu-score">ハイスコア：<span data-score-for="classic" data-score-level="hard">0</span></span>
+          </button>
+          <button type="button" class="menu-item easy" data-mode="button" data-level="easy">
+            <span class="menu-name">2. 2ボタン</span>
+            <span class="menu-desc">① で右へ、② で奥へ。離すと下りる</span>
+            <span class="menu-score">ハイスコア：<span data-score-for="button" data-score-level="easy">0</span></span>
+          </button>
+          <button type="button" class="menu-item hard" data-mode="button" data-level="hard">
+            <span class="menu-name">5. 2ボタン</span>
+            <span class="menu-desc">① で右へ、② で奥へ。離すと下りる</span>
+            <span class="menu-score">ハイスコア：<span data-score-for="button" data-score-level="hard">0</span></span>
+          </button>
+          <button type="button" class="menu-item easy" data-mode="three" data-level="easy">
+            <span class="menu-name">3. 3本爪</span>
+            <span class="menu-desc">十字キーで自由に動かす。大きな景品が3つ</span>
+            <span class="menu-score">ハイスコア：<span data-score-for="three" data-score-level="easy">0</span></span>
+          </button>
+          <button type="button" class="menu-item hard" data-mode="three" data-level="hard">
+            <span class="menu-name">6. 3本爪</span>
+            <span class="menu-desc">十字キーで自由に動かす。大きな景品が3つ</span>
+            <span class="menu-score">ハイスコア：<span data-score-for="three" data-score-level="hard">0</span></span>
+          </button>
+        </div>
+        <p class="menu-hint">クリックか、矢印キーで選んで Enter（1〜6 キーでも始まる）</p>
       </div>
     </div>
 
@@ -43,6 +68,17 @@
       <button type="button" data-key="ArrowUp" class="big" aria-label="ボタン2：奥へ移動">②<br>↑</button>
     </div>
 
+    <!-- 3 本爪モードの操作ボタン（十字キーと下ろすボタン） -->
+    <div id="controls-three" class="controls three" hidden>
+      <div class="dpad">
+        <button type="button" data-key="ArrowUp" class="up" aria-label="奥へ移動">↑</button>
+        <button type="button" data-key="ArrowLeft" class="left" aria-label="左へ移動">←</button>
+        <button type="button" data-key="ArrowRight" class="right" aria-label="右へ移動">→</button>
+        <button type="button" data-key="ArrowDown" class="down" aria-label="手前へ移動">↓</button>
+      </div>
+      <button type="button" data-key="Space" class="drop">下ろす</button>
+    </div>
+
     <button type="button" id="back-to-menu" class="back" hidden>メニューへ（Esc）</button>
 
     <section class="zukan" aria-label="獲得一覧">
@@ -50,6 +86,7 @@
       <ul id="zukan-list" class="zukan-list"></ul>
     </section>
     <p id="help-classic" class="help" hidden>キーボード：← → で移動、スペースで下ろす、R でリセット、M で効果音の切り替え</p>
+    <p id="help-three" class="help" hidden>キーボード：← → で左右、↑ で奥、↓ で手前、スペースで下ろす。1 回 15 秒で自動で下りる。R でリセット、M で効果音の切り替え</p>
     <p id="help-button" class="help" hidden>キーボード：→（または 1）が ①、↑（または 2）が ②。R でリセット、M で効果音の切り替え</p>
   </main>
 
@@ -64,10 +101,12 @@
   <script src="js/sound.js"></script>
   <script src="js/collection.js"></script>
   <script src="js/render.js"></script>
-  <script src="js/render_button.js"></script>
+  <script src="js/render_floor.js"></script>
   <script src="js/session.js"></script>
   <script src="js/modes/classic.js"></script>
+  <script src="js/modes/floor.js"></script>
   <script src="js/modes/button.js"></script>
+  <script src="js/modes/three_claw.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

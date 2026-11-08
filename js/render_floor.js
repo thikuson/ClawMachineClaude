@@ -1,8 +1,10 @@
-// 2 ボタンモードの描画。床を斜め前から見た形で描き、奥にあるものほど小さく上に描く
-const ButtonRender = {
+// 床を斜め前から見たモード（2 ボタン・3 本爪）の描画。奥にあるものほど小さく上に描く
+const FloorRender = {
+  layout: null, // 描くモードの床の設定（CONFIG.ufo など）。モードが描く前に設定する
+
   // 世界の座標（x：左右、z：奥行き、h：高さ）を画面上の位置と大きさの倍率 k に変える
   project(x, z, h) {
-    const u = CONFIG.ufo;
+    const u = this.layout;
     const t = z / u.worldD;                     // 0 が手前、1 が奥
     const k = 1 - (1 - u.backScale) * t;
     return {
@@ -35,16 +37,16 @@ const ButtonRender = {
     items.push({ z: mode.headZ() - 0.5, draw: () => this.drawClaw(ctx, claw, mode) });
     // 影は床の上なので、すべての物より先に描く
     for (const p of prizes) this.drawShadow(ctx, p.x, p.z, p.r, p.h);
-    this.drawShadow(ctx, mode.headX(), mode.headZ(), 18, claw.h - CONFIG.claw.armLength);
+    this.drawShadow(ctx, mode.headX(), mode.headZ(), mode.arm.tipOpen * 0.5, claw.h - mode.arm.armLength);
     items.sort((a, b) => b.z - a.z);
     for (const item of items) item.draw();
 
-    this.drawButtonLamps(ctx, claw.state);
+    mode.control.drawPanel(ctx, mode);
   },
 
   drawMachine(ctx, time) {
     const c = CONFIG.colors;
-    const u = CONFIG.ufo;
+    const u = this.layout;
     const box = CONFIG.case;
 
     ctx.fillStyle = c.background;
@@ -114,7 +116,7 @@ const ButtonRender = {
 
   // 床に落ちる影。高いところにあるほど薄く小さくする
   drawShadow(ctx, x, z, r, h) {
-    const u = CONFIG.ufo;
+    const u = this.layout;
     if (x < u.chute.w && z < u.chute.d) return; // 穴の上には影を落とさない
     const p = this.project(x, z, 0);
     const fade = Math.max(0.15, 1 - Math.max(0, h) / u.topH);
@@ -125,7 +127,7 @@ const ButtonRender = {
   },
 
   drawPrize(ctx, p) {
-    const u = CONFIG.ufo;
+    const u = this.layout;
     const center = this.project(p.x, p.z, p.h + p.r);
     const size = Math.round(p.r * 2.2 * center.k);
     ctx.save();
@@ -140,7 +142,7 @@ const ButtonRender = {
 
   drawClaw(ctx, claw, mode) {
     const c = CONFIG.colors;
-    const u = CONFIG.ufo;
+    const u = this.layout;
     // 本体は揺れを含めた位置、ケーブルの上端は台車の位置
     const head = this.project(mode.headX(), mode.headZ(), claw.h);
     const top = this.project(claw.x, claw.z, u.topH + 40);
@@ -162,9 +164,27 @@ const ButtonRender = {
     ctx.lineTo(head.x, head.y - 10 * k);
     ctx.stroke();
 
-    // 爪
+    if (mode.arm.prongs === 3) {
+      this.drawThreeProngs(ctx, mode, head, true);
+    } else {
+      this.drawTwoProngs(ctx, mode, head);
+    }
+
+    // 本体
+    const img = Render.clawHeadImage;
+    const s = 3 * k;
+    ctx.drawImage(img, Math.round(head.x - img.width * s / 2), Math.round(head.y - 12 * k),
+      Math.round(img.width * s), Math.round(img.height * s));
+    // 3 本爪は、本体より手前にある爪を本体の後に描く
+    if (mode.arm.prongs === 3) this.drawThreeProngs(ctx, mode, head, false);
+  },
+
+  // 2 本爪。画面の左右に開く
+  drawTwoProngs(ctx, mode, head) {
+    const c = CONFIG.colors;
+    const k = head.k;
     const spread = mode.tipSpread() * k;
-    const armLen = CONFIG.claw.armLength * k;
+    const armLen = mode.arm.armLength * k;
     const tipY = head.y + armLen;
     const elbowY = head.y + armLen * 0.55;
     ctx.strokeStyle = c.claw;
@@ -179,32 +199,53 @@ const ButtonRender = {
       ctx.lineTo(head.x + side * (spread - 7 * k), tipY - 2);
       ctx.stroke();
     }
-
-    // 本体
-    const img = Render.clawHeadImage;
-    const s = 3 * k;
-    ctx.drawImage(img, Math.round(head.x - img.width * s / 2), Math.round(head.y - 12 * k),
-      Math.round(img.width * s), Math.round(img.height * s));
   },
 
-  // 床の手前の板に、いま押せるボタンを光らせて表示する
-  drawButtonLamps(ctx, state) {
-    const lit1 = state === 'ready1' || state === 'move1';
-    const lit2 = state === 'ready2' || state === 'move2';
-    const lamps = [
-      { label: '①', arrow: '→', lit: lit1, x: 392 },
-      { label: '②', arrow: '↑', lit: lit2, x: 428 },
-    ];
-    const y = 528; // 床の手前の板の上
-    for (const lamp of lamps) {
-      ctx.fillStyle = lamp.lit ? '#ffe066' : '#4a4470';
+  // 3 本爪。真上から見て 120 度ずつの向きに開く（奥に 1 本、手前の左右に 2 本）
+  // back が true なら奥側の爪だけ、false なら手前側の爪だけを描く
+  drawThreeProngs(ctx, mode, head, back) {
+    const c = CONFIG.colors;
+    const claw = mode.claw;
+    const hx = mode.headX();
+    const hz = mode.headZ();
+    const spread = mode.tipSpread();
+    const armLen = mode.arm.armLength;
+    ctx.strokeStyle = c.claw;
+    ctx.lineWidth = Math.max(3, 6 * head.k);
+    ctx.lineCap = 'square';
+    ctx.lineJoin = 'miter';
+    for (const deg of [90, 210, 330]) {
+      const rad = deg * Math.PI / 180;
+      const dx = Math.cos(rad);
+      const dz = Math.sin(rad);
+      if ((dz > 0) !== back) continue;
+      const root = this.project(hx + dx * 10, hz + dz * 10, claw.h - 4);
+      const elbow = this.project(hx + dx * (spread + 10), hz + dz * (spread + 10), claw.h - armLen * 0.55);
+      const tip = this.project(hx + dx * spread, hz + dz * spread, claw.h - armLen);
+      const hook = this.project(hx + dx * (spread - 9), hz + dz * (spread - 9), claw.h - armLen + 3);
       ctx.beginPath();
-      ctx.arc(lamp.x, y, 14, 0, Math.PI * 2);
+      ctx.moveTo(root.x, root.y);
+      ctx.lineTo(elbow.x, elbow.y);
+      ctx.lineTo(tip.x, tip.y);
+      ctx.lineTo(hook.x, hook.y);
+      ctx.stroke();
+    }
+  },
+
+  // 床の手前の板の右側に、丸いランプを並べて表示する（ボタンの案内や残り時間）
+  // lamps：{ text, lit（光らせるか）, warn（赤くして急がせるか） } の一覧
+  drawLamps(ctx, lamps) {
+    const y = 528; // 床の手前の板の上
+    lamps.forEach((lamp, i) => {
+      const x = 428 - (lamps.length - 1 - i) * 36;
+      ctx.fillStyle = lamp.warn ? '#ff7aa8' : (lamp.lit ? '#ffe066' : '#4a4470');
+      ctx.beginPath();
+      ctx.arc(x, y, 14, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = lamp.lit ? '#2b2745' : '#8f89b8';
       ctx.font = 'bold 11px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(lamp.label + lamp.arrow, lamp.x, y + 4);
-    }
+      ctx.fillText(lamp.text, x, y + 4);
+    });
   },
 };

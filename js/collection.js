@@ -3,7 +3,7 @@
 const Collection = {
   STORAGE_KEY: 'clawMachineClaude.save',
   counts: [],      // 種類ごとの、これまでに獲得した数
-  highScores: { classic: 0, button: 0 },
+  highScores: {}, // 'classic' や 'button_easy' などの名前ごとのハイスコア（js/session.js の scoreKey）
   listElement: null,
 
   init(listElement) {

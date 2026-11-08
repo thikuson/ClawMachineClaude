@@ -109,7 +109,7 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   padding: 24px;
   border-radius: 12px;
   background: rgba(26, 23, 48, 0.85);
@@ -122,7 +122,7 @@ body {
   flex-direction: column;
   gap: 4px;
   width: min(320px, 100%);
-  padding: 14px 16px;
+  padding: 10px 16px;
   border: 3px solid #5a4f8c;
   border-radius: 12px;
   background: #2b2745;
@@ -164,3 +164,57 @@ body {
   color: #f4f1ff;
   cursor: pointer;
 }
+
+/* 3 本爪モードの十字キー */
+.controls.three { align-items: center; gap: 24px; }
+
+.dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 52px);
+  grid-template-rows: repeat(3, 52px);
+  gap: 4px;
+}
+
+.dpad button { min-width: 0; padding: 0; }
+
+.dpad .up { grid-column: 2; grid-row: 1; }
+.dpad .left { grid-column: 1; grid-row: 2; }
+.dpad .right { grid-column: 3; grid-row: 2; }
+.dpad .down { grid-column: 2; grid-row: 3; }
+
+/* メニュー：2 列（かんたん・むずかしい）× 3 行（遊び方） */
+.menu-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.menu-level {
+  margin: 0;
+  padding: 4px;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.menu-level small { display: block; font-size: 0.75rem; font-weight: normal; opacity: 0.85; }
+
+.menu-level.easy { background: #3d5a3a; color: #c9f5b8; }
+
+.menu-level.hard { background: #5a3a4f; color: #ffc4d6; }
+
+.menu-grid .menu-item { width: auto; padding: 8px 10px; }
+
+.menu-grid .menu-name { font-size: 1rem; }
+
+.menu-grid .menu-desc { font-size: 0.72rem; }
+
+.menu-item.easy { border-color: #4f7a4a; }
+
+.menu-item.hard { border-color: #8a4f6f; }
+
+.menu-item.easy.selected, .menu-item.easy:hover { border-color: #9cf07a; }
+
+.menu-item.hard.selected, .menu-item.hard:hover { border-color: #ff7aa8; }

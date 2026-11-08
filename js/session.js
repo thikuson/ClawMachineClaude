@@ -1,9 +1,15 @@
 // 1 ゲーム分の進行（スコア・残り回数・メッセージ・終了判定）。どのモードでも共通で使う
 function GameSession(modeKey, options) {
-  this.modeKey = modeKey;          // 'classic' や 'button'。ハイスコアをモードごとに分けるため
+  // ハイスコアをモードと難しさごとに分けるための名前。揺れありはモード名のまま（以前の記録を引き継ぐため）、
+  // 揺れなし（かんたん）は後ろに '_easy' を付ける
+  this.modeKey = GameSession.scoreKey(modeKey, Swing.enabled);
   this.restartHint = options.restartHint;
   this.reset();
 }
+
+GameSession.scoreKey = function (modeKey, swingOn) {
+  return swingOn ? modeKey : modeKey + '_easy';
+};
 
 // ゲーム内のセリフ
 GameSession.MESSAGES = {
@@ -56,11 +62,12 @@ GameSession.prototype.onClawEvent = function (kind, x, y) {
 // 景品が取り出し口に入ったとき。x, y は演出を出す画面上の位置
 GameSession.prototype.onCaptured = function (prize, x, y) {
   const sprite = PRIZE_SPRITES[prize.type];
-  this.score += sprite.points;
+  const points = sprite.points * (prize.pointScale || 1); // 3 本爪モードの大きい景品は点数が高い
+  this.score += points;
   const isNew = Collection.add(prize.type);
 
   Effects.burst(x, y, sprite.rare ? 120 : 50);
-  Effects.popup('+' + sprite.points + '点', x + 40, y - 40);
+  Effects.popup('+' + points + '点', x + 40, y - 40);
   if (isNew) Effects.popup('はじめて！', x + 40, y - 80, '#ff7aa8');
 
   if (sprite.rare) { Sound.clear(); this.showMessage('rare'); }
@@ -93,11 +100,12 @@ GameSession.prototype.drawHud = function () {
   Render.drawHud({
     score: this.score,
     playsLeft: this.playsLeft,
-    highScore: Collection.highScores[this.modeKey],
+    highScore: Collection.highScores[this.modeKey] || 0,
+    swingOn: Swing.enabled,
     message: this.message || this.help,
     soundOn: Sound.enabled,
   });
   if (this.gameOver) {
-    Render.drawGameOver(this.gameOver, Collection.highScores[this.modeKey], this.restartHint);
+    Render.drawGameOver(this.gameOver, Collection.highScores[this.modeKey] || 0, this.restartHint);
   }
 };

@@ -155,7 +155,8 @@ const Render = {
     ctx.font = '14px sans-serif';
     ctx.textAlign = 'center';
     ctx.globalAlpha = 0.7;
-    ctx.fillText('効果音：' + (hud.soundOn ? 'オン' : 'オフ') + '（M で切り替え）', CONFIG.width / 2, CONFIG.height - 20);
+    ctx.fillText((hud.swingOn ? 'むずかしい（揺れあり）' : 'かんたん（揺れなし）') + '　効果音：' +
+      (hud.soundOn ? 'オン' : 'オフ') + '（M）', CONFIG.width / 2, CONFIG.height - 20);
     ctx.globalAlpha = 1;
   },
 

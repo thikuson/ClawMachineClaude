@@ -4,6 +4,9 @@ function Swing() {
   this.reset(0);
 }
 
+// 揺れを使うかどうか。メニューで「かんたん」を選ぶと false、「むずかしい」を選ぶと true になる
+Swing.enabled = true;
+
 Swing.prototype.reset = function (pos) {
   this.offset = 0;      // 台車の真下からのずれ
   this.vel = 0;         // ずれの変わる速さ
@@ -16,6 +19,14 @@ Swing.prototype.update = function (dt, pos) {
   if (dt <= 0) return;
   const s = CONFIG.swing;
   const speed = (pos - this.prevPos) / dt;
+  if (!Swing.enabled) {
+    // 揺れなしのときは、台車の位置だけ覚えておき、ずれは常に 0 にする
+    this.prevPos = pos;
+    this.prevSpeed = speed;
+    this.offset = 0;
+    this.vel = 0;
+    return;
+  }
   this.vel -= (speed - this.prevSpeed) * s.strength;
   this.prevPos = pos;
   this.prevSpeed = speed;
@@ -27,6 +38,7 @@ Swing.prototype.update = function (dt, pos) {
 
 // つかんだときなどに、ガクンと揺らす
 Swing.prototype.kick = function (power) {
+  if (!Swing.enabled) return;
   this.vel += (Math.random() - 0.5) * 2 * power;
 };
 

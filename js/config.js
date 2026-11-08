@@ -41,7 +41,7 @@ const CONFIG = {
   },
 
   // 2 ボタンモード。景品を左右（x）と奥行き（z）の床に置き、斜め前から見た画面で描く
-  // 座標の単位は「世界」の長さ。画面上の位置は render_button.js の project() で計算する
+  // 座標の単位は「世界」の長さ。画面上の位置は render_floor.js の project() で計算する
   ufo: {
     worldW: 400,       // 床の横幅
     worldD: 200,       // 床の奥行き
@@ -62,6 +62,59 @@ const CONFIG = {
     spawnMaxX: 375,
     spawnMinZ: 30,
     spawnMaxZ: 180,
+  },
+
+  // 2 ボタンモードの爪（2 本）
+  twoClawArm: {
+    prongs: 2,
+    armLength: 44,     // 本体から爪の先までの長さ
+    tipClosed: 8,      // 閉じたときの爪の先の、中心からの距離
+    tipOpen: 34,       // 開いたときの爪の先の、中心からの距離
+    hugRatio: 0.75,    // 景品をつかんだとき、景品の半径のどこまで爪が閉じるか
+    closeTime: 0.45,
+    openTime: 0.3,
+    gripFactor: 1,     // つかむ力の倍率（景品ごとのつかみやすさに掛ける）
+  },
+
+  // 3 本爪モード。床などは 2 ボタンモードと同じで、取り出し口と動ける範囲が違う
+  threeClaw: {
+    worldW: 400,
+    worldD: 200,
+    topH: 400,
+    frontY: 515,
+    backY: 365,
+    centerX: 240,
+    backScale: 0.65,
+    home: { x: 60, z: 50 },
+    chute: { w: 120, d: 100 },  // 大きい景品が入るように広くする
+    minX: 40,          // 十字キーで動ける範囲
+    maxX: 375,
+    minZ: 30,
+    maxZ: 180,
+    moveSpeed: 100,
+    downSpeed: 140,
+    upSpeed: 110,
+    returnSpeed: 150,
+    timeLimit: 15,     // 1 回ごとの制限時間（秒）。過ぎると自動で下りる
+    prizeCount: 3,     // 置く景品の数
+    prizeScale: 2.1,   // 景品の大きさの倍率
+    pointScale: 2,     // 大きい景品なので、点数を 2 倍にする
+    spawnMinX: 180,
+    spawnMaxX: 350,
+    spawnMinZ: 60,
+    spawnMaxZ: 150,
+  },
+
+  // 3 本爪モードの爪。大きい景品を包むように 3 本の爪で囲む
+  threeClawArm: {
+    prongs: 3,
+    armLength: 70,
+    tipClosed: 12,
+    tipOpen: 62,
+    hugRatio: 0.85,
+    closeTime: 0.6,
+    openTime: 0.35,
+    gripFactor: 0.9,   // 3 本爪は力が弱めで、真ん中をとらえないと落としやすい
   },
 
   // アームの揺れ（js/swing.js）
