@@ -20,6 +20,14 @@ const Input = {
       this.keys = {};
     });
 
+    // スマホで画面を長押ししたときに、文字の選択やメニュー（コピーなど）が出て
+    // 端末が振動しないようにする。ゲームの画面では文字を選ぶ必要がないため
+    const app = document.querySelector('.app');
+    if (app) {
+      app.addEventListener('contextmenu', (e) => e.preventDefault());
+      app.addEventListener('selectstart', (e) => e.preventDefault());
+    }
+
     // 画面のボタン（スマホ向け）。data-key に対応するキーを押したことにする
     document.querySelectorAll('[data-key]').forEach((btn) => {
       const code = btn.dataset.key;
