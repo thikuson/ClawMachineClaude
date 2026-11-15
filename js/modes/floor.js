@@ -58,8 +58,39 @@ function createFloorMode(options) {
       this.setState(this.control.firstState);
     },
 
-    // 景品を床に重ならないように置く
+    // 景品を床に重ならないように置く。重なったり、アームが届かない場所に置いたりした並びは、並べ直す
+    // （絶対に取れない並びで始まらないようにするため）
     resetPrizes() {
+      for (let tries = 0; tries < CONFIG.layoutCheck.maxTries; tries++) {
+        this.placePrizes();
+        if (this.isGoodLayout()) return;
+      }
+    },
+
+    // アームが動ける範囲。2 ボタンモードは開始位置から右と奥へしか動けないので、開始位置が手前左の端になる
+    reachArea() {
+      const u = this.layout;
+      return {
+        minX: u.minX !== undefined ? u.minX : u.home.x,
+        maxX: u.maxX,
+        minZ: u.minZ !== undefined ? u.minZ : u.home.z,
+        maxZ: u.maxZ,
+      };
+    },
+
+    isGoodLayout() {
+      const area = this.reachArea();
+      const ratio = CONFIG.layoutCheck.reachRatio;
+      return this.prizes.every((p, i) => {
+        const nx = Math.max(area.minX, Math.min(area.maxX, p.x));
+        const nz = Math.max(area.minZ, Math.min(area.maxZ, p.z));
+        const reachable = Math.hypot(p.x - nx, p.z - nz) <= p.r * ratio;
+        const overlaps = this.prizes.some((q, j) => j !== i && Math.hypot(q.x - p.x, q.z - p.z) < q.r + p.r);
+        return reachable && !overlaps;
+      });
+    },
+
+    placePrizes() {
       const u = this.layout;
       const p = CONFIG.prize;
       const normalTypes = [];

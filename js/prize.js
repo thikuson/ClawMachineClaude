@@ -2,9 +2,41 @@
 const Prizes = {
   list: [],
 
-  // 景品を並べ直す。上から落として床に積もらせる
-  reset() {
-    const p = CONFIG.prize;
+  // 景品を並べ直す。count を省くと CONFIG.prize.count 個
+  // 上から落として床に積もらせたあとの並びを先に（画面に出さずに）計算し、アームが届かない景品があれば
+  // 落とす位置から選び直す（景品どうしが押し合って壁ぎわに寄り、絶対に取れない並びで始まるのを防ぐため）。
+  // 届くと確かめられたら落とす前の位置に戻し、画面では上から落ちてくる様子をそのまま見せる
+  reset(count) {
+    const check = CONFIG.layoutCheck;
+    let start = [];
+    for (let tries = 0; tries < check.maxTries; tries++) {
+      this.drop(count);
+      start = this.list.map((p) => Object.assign({}, p)); // 落とす前の位置を覚えておく
+      this.settle();
+      if (this.isReachable(count)) break;
+    }
+    this.list = start;
+  },
+
+  // 落ち着くまで物理を先に進める（画面には出さない）
+  settle() {
+    for (let i = 0; i < 240; i++) this.update(1 / 60);
+  },
+
+  // すべての景品が床（取り出し口の外）に残り、アームが真上近くまで届くか
+  isReachable(count) {
+    if (this.list.length < count) return false; // 取り出し口に落ちてしまった
+    const c = Claw.cfg;
+    const ratio = CONFIG.layoutCheck.reachRatio;
+    return this.list.every((p) => {
+      const nearest = Math.max(c.minX, Math.min(c.maxX, p.x));
+      return Math.abs(p.x - nearest) <= p.r * ratio;
+    });
+  },
+
+  // 景品を上から落とす位置に並べる
+  drop(count) {
+    const p = Object.assign({}, CONFIG.prize, count ? { count } : {});
     this.list = [];
     // 種類がかたよらないように、順番に割り当ててから混ぜる
     const normalTypes = [];

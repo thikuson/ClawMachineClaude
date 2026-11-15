@@ -10,6 +10,13 @@
   <main class="app">
     <h1 class="title">クレーンゲーム</h1>
 
+    <!-- 遊んでいる間だけ、画面の上に出すボタン。スマホでも押しやすいように、操作ボタンとは離して上に置く -->
+    <div id="play-bar" class="play-bar" hidden>
+      <button type="button" id="back-to-menu" class="back">◀ メニューへ（Esc）</button>
+      <!-- R キーと同じ。景品を並べ直して、最初から遊ぶ -->
+      <button type="button" data-key="KeyR" class="back">並べ直す（R）</button>
+    </div>
+
     <div class="screen">
       <canvas id="game" width="480" height="640" aria-label="クレーンゲームの画面"></canvas>
 
@@ -20,39 +27,54 @@
         <div class="menu-grid">
           <p class="menu-level easy">かんたん<small>揺れなし</small></p>
           <p class="menu-level hard">むずかしい<small>揺れあり</small></p>
+          <button type="button" class="menu-item easy" data-mode="auto" data-level="easy">
+            <span class="menu-name">1. おまかせ</span>
+            <span class="menu-desc">自動で動くアームを、スペースで下ろすだけ</span>
+            <span class="menu-score">ハイスコア：<span data-score-for="auto" data-score-level="easy">0</span></span>
+          </button>
+          <button type="button" class="menu-item hard" data-mode="auto" data-level="hard">
+            <span class="menu-name">5. おまかせ</span>
+            <span class="menu-desc">自動で動くアームを、スペースで下ろすだけ</span>
+            <span class="menu-score">ハイスコア：<span data-score-for="auto" data-score-level="hard">0</span></span>
+          </button>
           <button type="button" class="menu-item easy" data-mode="classic" data-level="easy">
-            <span class="menu-name">1. クラシック</span>
+            <span class="menu-name">2. クラシック</span>
             <span class="menu-desc">← → で動かして、スペースで下ろす</span>
             <span class="menu-score">ハイスコア：<span data-score-for="classic" data-score-level="easy">0</span></span>
           </button>
           <button type="button" class="menu-item hard" data-mode="classic" data-level="hard">
-            <span class="menu-name">4. クラシック</span>
+            <span class="menu-name">6. クラシック</span>
             <span class="menu-desc">← → で動かして、スペースで下ろす</span>
             <span class="menu-score">ハイスコア：<span data-score-for="classic" data-score-level="hard">0</span></span>
           </button>
           <button type="button" class="menu-item easy" data-mode="button" data-level="easy">
-            <span class="menu-name">2. 2ボタン</span>
+            <span class="menu-name">3. 2ボタン</span>
             <span class="menu-desc">① で右へ、② で奥へ。離すと下りる</span>
             <span class="menu-score">ハイスコア：<span data-score-for="button" data-score-level="easy">0</span></span>
           </button>
           <button type="button" class="menu-item hard" data-mode="button" data-level="hard">
-            <span class="menu-name">5. 2ボタン</span>
+            <span class="menu-name">7. 2ボタン</span>
             <span class="menu-desc">① で右へ、② で奥へ。離すと下りる</span>
             <span class="menu-score">ハイスコア：<span data-score-for="button" data-score-level="hard">0</span></span>
           </button>
           <button type="button" class="menu-item easy" data-mode="three" data-level="easy">
-            <span class="menu-name">3. 3本爪</span>
+            <span class="menu-name">4. 3本爪</span>
             <span class="menu-desc">十字キーで自由に動かす。大きな景品が3つ</span>
             <span class="menu-score">ハイスコア：<span data-score-for="three" data-score-level="easy">0</span></span>
           </button>
           <button type="button" class="menu-item hard" data-mode="three" data-level="hard">
-            <span class="menu-name">6. 3本爪</span>
+            <span class="menu-name">8. 3本爪</span>
             <span class="menu-desc">十字キーで自由に動かす。大きな景品が3つ</span>
             <span class="menu-score">ハイスコア：<span data-score-for="three" data-score-level="hard">0</span></span>
           </button>
         </div>
-        <p class="menu-hint">クリックか、矢印キーで選んで Enter（1〜6 キーでも始まる）</p>
+        <p class="menu-hint">クリックか、矢印キーで選んで Enter（1〜8 キーでも始まる）</p>
       </div>
+    </div>
+
+    <!-- おまかせモードの操作ボタン（下ろすだけ） -->
+    <div id="controls-auto" class="controls" hidden>
+      <button type="button" data-key="Space" class="drop">下ろす</button>
     </div>
 
     <!-- クラシックモードの操作ボタン -->
@@ -79,12 +101,17 @@
       <button type="button" data-key="Space" class="drop">下ろす</button>
     </div>
 
-    <button type="button" id="back-to-menu" class="back" hidden>メニューへ（Esc）</button>
-
     <section class="zukan" aria-label="獲得一覧">
       <h2>けいひん ずかん <span id="zukan-progress"></span></h2>
       <ul id="zukan-list" class="zukan-list"></ul>
+      <!-- 押すと確認のメッセージを出してから、図鑑だけを最初の状態に戻す（ハイスコアは残す） -->
+      <div class="reset-buttons">
+        <button type="button" id="zukan-reset" class="zukan-reset">ずかんを リセット</button>
+        <!-- ハイスコアも、確認のメッセージを出してから全メニュー分を消す（図鑑は残す） -->
+        <button type="button" id="score-reset" class="zukan-reset">ハイスコアを リセット</button>
+      </div>
     </section>
+    <p id="help-auto" class="help" hidden>キーボード：アームは自動で左右に動く。スペースで下ろす、R でリセット、M で効果音の切り替え</p>
     <p id="help-classic" class="help" hidden>キーボード：← → で移動、スペースで下ろす、R でリセット、M で効果音の切り替え</p>
     <p id="help-three" class="help" hidden>キーボード：← → で左右、↑ で奥、↓ で手前、スペースで下ろす。1 回 15 秒で自動で下りる。R でリセット、M で効果音の切り替え</p>
     <p id="help-button" class="help" hidden>キーボード：→（または 1）が ①、↑（または 2）が ②。R でリセット、M で効果音の切り替え</p>
@@ -104,6 +131,7 @@
   <script src="js/render_floor.js"></script>
   <script src="js/session.js"></script>
   <script src="js/modes/classic.js"></script>
+  <script src="js/modes/auto.js"></script>
   <script src="js/modes/floor.js"></script>
   <script src="js/modes/button.js"></script>
   <script src="js/modes/three_claw.js"></script>

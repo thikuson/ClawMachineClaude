@@ -95,6 +95,18 @@ const Render = {
   // アーム（ケーブル・本体・2 本の爪）
   drawClaw(claw) {
     const ctx = this.ctx;
+    // 壁ぎわでは爪がケースの外にはみ出すので、ケースの内側だけに描く（壁の向こうに隠れて見える）
+    const box = CONFIG.case;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(box.x, 0, box.w, CONFIG.height);
+    ctx.clip();
+    this.drawClawInCase(claw);
+    ctx.restore();
+  },
+
+  drawClawInCase(claw) {
+    const ctx = this.ctx;
     const c = CONFIG.colors;
     const railY = CONFIG.case.y + 13;
     const headTop = claw.y - 10;

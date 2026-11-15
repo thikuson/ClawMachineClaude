@@ -6,6 +6,9 @@ const ClassicMode = {
 
   start() {
     this.session = new GameSession('classic', { restartHint: 'R か「下ろす」で もういちど' });
+    // おまかせモードのあとでも、ふつうのアームに戻す
+    Claw.cfg = CONFIG.claw;
+    Claw.autoMove = false;
     this.reset();
     Claw.onResult = (kind) => {
       if (kind === 'drop') this.session.usePlay();

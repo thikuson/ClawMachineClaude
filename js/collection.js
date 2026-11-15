@@ -91,6 +91,19 @@ const Collection = {
     });
   },
 
+  // 図鑑だけを最初の状態に戻す（ハイスコアは残す）
+  resetCounts() {
+    this.counts = PRIZE_SPRITES.map(() => 0);
+    this.save();
+    this.renderList();
+  },
+
+  // ハイスコアだけを、すべてのメニューの分 0 に戻す（図鑑は残す）
+  resetHighScores() {
+    this.highScores = {};
+    this.save();
+  },
+
   completedCount() {
     return this.counts.filter((n) => n > 0).length;
   },

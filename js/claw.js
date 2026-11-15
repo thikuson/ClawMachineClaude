@@ -10,11 +10,14 @@ const Claw = {
   holdOffsetX: 0, // つかんだ景品の、アーム中心からの横のずれ
   slipAt: -1,     // 景品が滑り落ちるまでの時間（-1 なら落ちない）
   swing: new Swing(), // 左右の揺れ
+  cfg: CONFIG.claw, // アームの設定。おまかせモードでは、爪の開きやつかむ力を変えた設定に差し替える
+  autoMove: false,  // true なら、待機中に左右へ自動で往復する（おまかせモード）
+  autoDir: 1,       // 自動で動く向き（1 で右、-1 で左）
   canDrop: () => true, // 下ろしてよいか（プレイ回数が残っているか。main.js で設定）
   onResult: null, // 出来事（drop / grab / miss / slip）を伝える関数（main.js で設定）
 
   reset() {
-    const c = CONFIG.claw;
+    const c = this.cfg;
     this.state = 'idle';
     this.x = c.homeX;
     this.y = c.homeY;
@@ -30,24 +33,31 @@ const Claw = {
 
   // 爪の先の y 座標
   tipY() {
-    return this.y + CONFIG.claw.armLength;
+    return this.y + this.cfg.armLength;
   },
 
   // 爪の先の、中心からの横の距離
   tipSpread() {
-    const c = CONFIG.claw;
+    const c = this.cfg;
     return c.tipClosed + (c.tipOpen - c.tipClosed) * this.openness;
   },
 
   update(dt, prizes) {
-    const c = CONFIG.claw;
+    const c = this.cfg;
     this.timer += dt;
     this.swing.update(dt, this.x);
 
     switch (this.state) {
       case 'idle': {
-        if (Input.isDown('ArrowLeft')) this.x -= c.moveSpeed * dt;
-        if (Input.isDown('ArrowRight')) this.x += c.moveSpeed * dt;
+        if (this.autoMove) {
+          // 一定の速さで往復し、端に着いたら折り返す
+          this.x += this.autoDir * c.autoSpeed * dt;
+          if (this.x >= c.maxX) this.autoDir = -1;
+          if (this.x <= c.minX) this.autoDir = 1;
+        } else {
+          if (Input.isDown('ArrowLeft')) this.x -= c.moveSpeed * dt;
+          if (Input.isDown('ArrowRight')) this.x += c.moveSpeed * dt;
+        }
         this.x = Math.max(c.minX, Math.min(c.maxX, this.x));
         if (Input.wasPressed('Space') && this.canDrop()) {
           this.setState('down');
@@ -121,7 +131,10 @@ const Claw = {
   setState(next) {
     this.state = next;
     this.timer = 0;
-    if (next === 'idle') this.openness = 1;
+    if (next === 'idle') {
+      this.openness = 1;
+      this.autoDir = 1; // 取り出し口から戻ってきたら、また右へ動き始める
+    }
   },
 
   // 爪の間にある景品のうち、中心にいちばん近いものを探す
@@ -131,7 +144,7 @@ const Claw = {
     for (const p of prizes) {
       const dx = Math.abs(p.x - this.headX());
       const dy = Math.abs(p.y - this.tipY());
-      if (dx < CONFIG.claw.tipOpen && dy < p.r + 6 && dx < bestDx) {
+      if (dx < this.cfg.tipOpen && dy < p.r + 6 && dx < bestDx) {
         best = p;
         bestDx = dx;
       }
@@ -145,8 +158,10 @@ const Claw = {
       this.report('miss');
       return;
     }
-    const offset = Math.abs(target.x - this.headX()) / target.r; // 0 なら真ん中
-    const grip = PRIZE_SPRITES[target.type].grip;
+    // つかむ力が強いほど、真ん中からのずれが小さいのと同じ扱いになり、景品もつかみやすくなる
+    const power = this.cfg.gripPower || 1;
+    const offset = Math.abs(target.x - this.headX()) / target.r / power; // 0 なら真ん中
+    const grip = PRIZE_SPRITES[target.type].grip * Math.sqrt(power);
     const grabChance = Math.max(0.1, Math.min(0.95, (1.05 - offset * 0.8) * grip));
     if (Math.random() > grabChance) {
       // 転がる景品は、爪に押されて逃げていく
@@ -182,7 +197,7 @@ const Claw = {
   checkSlip(dt) {
     if (!this.held) return;
     this.carryTime += dt;
-    const grip = PRIZE_SPRITES[this.held.type].grip;
+    const grip = PRIZE_SPRITES[this.held.type].grip * Math.sqrt(this.cfg.gripPower || 1);
     const timeUp = this.slipAt >= 0 && this.carryTime >= this.slipAt;
     if (timeUp || Swing.shouldSlip(dt, [this.swing], grip)) {
       this.dropHeld();
