@@ -3,6 +3,8 @@ function GameSession(modeKey, options) {
   // ハイスコアを遊び方と難しさごとに分けるための名前
   this.modeKey = GameSession.scoreKey(modeKey, Level.key);
   this.restartHint = options.restartHint;
+  // 難しさの表示に、アームの揺れのあり・なしを添えるか（リングはどの難しさでも揺れるので添えない）
+  this.showSwing = options.showSwing !== false;
   this.reset();
 }
 
@@ -21,6 +23,9 @@ GameSession.MESSAGES = {
   miss: 'あれれ… つかめなかった',
   slip: 'おしい！ おちちゃった…',
   lastPlay: 'さいごの いっかい！',
+  hook: 'ひっかかった！ そのまま ひきあげろ！',
+  ringRim: 'フックに あたって はじかれた…',
+  ringOff: 'おしい！ リングが はずれちゃった…',
 };
 
 GameSession.prototype.reset = function () {
@@ -103,7 +108,7 @@ GameSession.prototype.drawHud = function () {
     score: this.score,
     playsLeft: this.playsLeft,
     highScore: Collection.highScores[this.modeKey] || 0,
-    levelLabel: Level.settings.label + (Level.settings.swing ? '（揺れあり）' : '（揺れなし）'),
+    levelLabel: Level.settings.label + (!this.showSwing ? '' : Level.settings.swing ? '（揺れあり）' : '（揺れなし）'),
     message: this.message || this.help,
     soundOn: Sound.enabled,
   });

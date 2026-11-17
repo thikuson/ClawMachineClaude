@@ -4,10 +4,11 @@
   Render.init(canvas);
   Input.init();
   Collection.init(document.getElementById('zukan-list'));
+  RingMode.setUp(); // メニューの背景に、景品を載せた台とリングを出せるようにしておく
 
-  const MODES = { auto: AutoMode, classic: ClassicMode, button: ButtonMode, three: ThreeClawMode };
-  // メニューの上から順（かんたんな遊び方から）。数字キーの 1〜4 もこの順
-  const MODE_KEYS = ['auto', 'classic', 'button', 'three'];
+  const MODES = { auto: AutoMode, classic: ClassicMode, button: ButtonMode, three: ThreeClawMode, ring: RingMode };
+  // メニューの上から順。数字キーの 1〜5 もこの順
+  const MODE_KEYS = ['auto', 'classic', 'button', 'three', 'ring'];
 
   const menu = document.getElementById('menu');
   const menuButtons = Array.from(menu.querySelectorAll('[data-mode]'));   // 4 つのゲーム
@@ -19,12 +20,14 @@
     classic: document.getElementById('controls-classic'),
     button: document.getElementById('controls-button'),
     three: document.getElementById('controls-three'),
+    ring: document.getElementById('controls-ring'),
   };
   const helps = {
     auto: document.getElementById('help-auto'),
     classic: document.getElementById('help-classic'),
     button: document.getElementById('help-button'),
     three: document.getElementById('help-three'),
+    ring: document.getElementById('help-ring'),
   };
   const zukanProgress = document.getElementById('zukan-progress');
 
@@ -168,7 +171,10 @@
       return;
     }
     const key = previewKey();
-    if (key === 'button' || key === 'three') {
+    if (key === 'ring') {
+      // リングの筐体（台と景品とリング）
+      RingMode.drawScene(time);
+    } else if (key === 'button' || key === 'three') {
       // 斜め前から見た筐体。2 ボタンと 3 本爪では取り出し口の大きさが違うので、そのゲームの配置で描く
       FloorRender.layout = MODES[key].layout;
       FloorRender.drawMachine(Render.ctx, time);
