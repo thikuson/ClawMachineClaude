@@ -4,16 +4,22 @@ const Input = {
   pressedQueue: {},   // 押された瞬間を 1 回だけ伝えるためのキー
 
   init() {
-    const blockScroll = ['Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
+    // Enter と スペース・矢印キーは、ブラウザの動き（ページのスクロールや、最後に押した画面のボタンをもう一度押すこと）を止める
+    const blockDefault = ['Space', 'Enter', 'NumpadEnter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
+    // Enter キーはスペースキーと同じ働きにする（下ろす・もう一度遊ぶ）。どちらでも押しやすい方で遊べるように
+    const aliases = { Enter: 'Space', NumpadEnter: 'Space' };
 
     window.addEventListener('keydown', (e) => {
-      if (!e.repeat) this.pressedQueue[e.code] = true;
-      this.keys[e.code] = true;
-      // スペースや矢印キーでページがスクロールしないようにする
-      if (blockScroll.includes(e.code)) e.preventDefault();
+      const codes = aliases[e.code] ? [e.code, aliases[e.code]] : [e.code];
+      for (const code of codes) {
+        if (!e.repeat) this.pressedQueue[code] = true;
+        this.keys[code] = true;
+      }
+      if (blockDefault.includes(e.code)) e.preventDefault();
     });
     window.addEventListener('keyup', (e) => {
       this.keys[e.code] = false;
+      if (aliases[e.code]) this.keys[aliases[e.code]] = false;
     });
     // ウィンドウからフォーカスが外れたら、押しっぱなし扱いを解除する
     window.addEventListener('blur', () => {

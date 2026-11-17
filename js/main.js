@@ -6,12 +6,12 @@
   Collection.init(document.getElementById('zukan-list'));
 
   const MODES = { auto: AutoMode, classic: ClassicMode, button: ButtonMode, three: ThreeClawMode };
-  // メニューの上から順（かんたんな遊び方から）。数字キーは かんたん が 1〜4、むずかしい が 5〜8
+  // メニューの上から順（かんたんな遊び方から）。数字キーの 1〜4 もこの順
   const MODE_KEYS = ['auto', 'classic', 'button', 'three'];
 
   const menu = document.getElementById('menu');
-  // 並び順は 行（遊び方）ごとに かんたん → むずかしい。index が偶数なら かんたん、奇数なら むずかしい
-  const menuButtons = Array.from(menu.querySelectorAll('[data-mode]'));
+  const menuButtons = Array.from(menu.querySelectorAll('[data-mode]'));   // 4 つのゲーム
+  const levelButtons = Array.from(menu.querySelectorAll('.level-tab'));  // かんたん・ふつう・むずかしい
   const scoreLabels = Array.from(menu.querySelectorAll('[data-score-for]'));
   const playBar = document.getElementById('play-bar'); // メニューへ・並べ直す のボタン
   const controls = {
@@ -29,7 +29,12 @@
   const zukanProgress = document.getElementById('zukan-progress');
 
   let current = null;   // 遊んでいるモード（メニュー表示中は null）
-  let selected = 0;     // メニューで選んでいる項目（menuButtons の番号）
+  // キーボードで選んでいるゲーム（menuButtons の番号）。-1 は何も選んでいない状態
+  // メニューを開いた直後は選ばず、↑ ↓ を押したときだけ枠を光らせる（前に遊んだゲームが選ばれたままに見えないように）
+  let selected = -1;
+  let levelKey = Collection.level; // メニューで選んでいる難しさ。前回選んだものから始める
+  let lastPlayed = 'auto';  // 最後に遊んだゲーム（メニューの背景に使う）
+  let hovered = null;       // マウスを乗せているゲーム
   let time = 0;
 
   function updateZukanProgress() {
@@ -37,14 +42,27 @@
   }
 
   function selectMenu(index) {
-    selected = (index + menuButtons.length) % menuButtons.length;
+    selected = index < 0 ? -1 : index % menuButtons.length;
     menuButtons.forEach((b, i) => b.classList.toggle('selected', i === selected));
   }
 
-  // 8 つのメニューそれぞれに、その遊び方と難しさのハイスコアを表示する
+  // 難しさを選ぶ。ボタンの見た目・説明・ハイスコアの表示を、選んだ難しさに合わせる
+  function selectLevel(key) {
+    levelKey = key;
+    levelButtons.forEach((b) => {
+      const on = b.dataset.level === key;
+      b.classList.toggle('selected', on);
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+    menu.dataset.level = key; // ゲームのボタンの枠の色を、難しさに合わせて変える（css）
+    Collection.setLevel(key);
+    updateMenuScores();
+  }
+
+  // 4 つのゲームそれぞれに、選んでいる難しさでのハイスコアを表示する
   function updateMenuScores() {
     for (const label of scoreLabels) {
-      const scoreKey = GameSession.scoreKey(label.dataset.scoreFor, label.dataset.scoreLevel === 'hard');
+      const scoreKey = GameSession.scoreKey(label.dataset.scoreFor, levelKey);
       label.textContent = Collection.highScores[scoreKey] || 0;
     }
   }
@@ -58,14 +76,15 @@
       helps[key].hidden = true;
     }
     Input.clearPressed();
-    selectMenu(selected);
-    updateMenuScores();
+    selectMenu(-1);
+    selectLevel(levelKey);
   }
 
-  // key は遊び方、hard は むずかしい（揺れあり）かどうか
-  function startMode(key, hard) {
+  // key は遊び方。難しさは、メニューで選んでいるもの
+  function startMode(key) {
     current = MODES[key];
-    selected = MODE_KEYS.indexOf(key) * 2 + (hard ? 1 : 0);
+    lastPlayed = key;
+    hovered = null;
     menu.hidden = true;
     playBar.hidden = false;
     for (const k of MODE_KEYS) {
@@ -73,12 +92,16 @@
       helps[k].hidden = k !== key;
     }
     Input.clearPressed();
-    Swing.enabled = hard;
+    Level.set(levelKey);
     current.start();
   }
 
-  menuButtons.forEach((b) => b.addEventListener('click', () =>
-    startMode(b.dataset.mode, b.dataset.level === 'hard')));
+  menuButtons.forEach((b) => {
+    b.addEventListener('click', () => startMode(b.dataset.mode));
+    b.addEventListener('pointerenter', () => { hovered = b.dataset.mode; });
+    b.addEventListener('pointerleave', () => { if (hovered === b.dataset.mode) hovered = null; });
+  });
+  levelButtons.forEach((b) => b.addEventListener('click', () => selectLevel(b.dataset.level)));
   document.getElementById('back-to-menu').addEventListener('click', showMenu);
 
   // 図鑑のリセット。間違えて押しても消えないように、確認してから消す
@@ -100,22 +123,21 @@
   window.addEventListener('pointerdown', unlockSound);
 
   function updateMenu() {
-    // ↑ ↓ で遊び方、← → で かんたん・むずかしい を選ぶ
-    if (Input.wasPressed('ArrowUp')) selectMenu(selected - 2);
-    if (Input.wasPressed('ArrowDown')) selectMenu(selected + 2);
-    if (Input.wasPressed('ArrowLeft')) selectMenu(selected - (selected % 2));
-    if (Input.wasPressed('ArrowRight')) selectMenu(selected - (selected % 2) + 1);
-    // 1〜4 は かんたん、5〜8 は むずかしい
-    const count = MODE_KEYS.length;
-    for (let n = 1; n <= count * 2; n++) {
+    // ↑ ↓ で遊び方、← → で難しさを選ぶ
+    // 何も選んでいないときは、↓ で一番上、↑ で一番下から選び始める
+    const count = menuButtons.length;
+    if (Input.wasPressed('ArrowUp')) selectMenu(selected < 0 ? count - 1 : (selected - 1 + count) % count);
+    if (Input.wasPressed('ArrowDown')) selectMenu(selected < 0 ? 0 : selected + 1);
+    const li = LEVEL_KEYS.indexOf(levelKey);
+    if (Input.wasPressed('ArrowLeft') && li > 0) selectLevel(LEVEL_KEYS[li - 1]);
+    if (Input.wasPressed('ArrowRight') && li < LEVEL_KEYS.length - 1) selectLevel(LEVEL_KEYS[li + 1]);
+    for (let n = 1; n <= MODE_KEYS.length; n++) {
       if (Input.wasPressed('Digit' + n)) {
-        startMode(MODE_KEYS[(n - 1) % count], n > count);
+        startMode(MODE_KEYS[n - 1]);
         return;
       }
     }
-    if (Input.wasPressed('Enter') || Input.wasPressed('Space')) {
-      startMode(MODE_KEYS[Math.floor(selected / 2)], selected % 2 === 1);
-    }
+    if ((Input.wasPressed('Enter') || Input.wasPressed('Space')) && selected >= 0) startMode(MODE_KEYS[selected]);
   }
 
   function update(dt) {
@@ -132,11 +154,26 @@
     current.update(dt);
   }
 
+  // メニューの背景に出すゲーム。マウスを乗せているもの → キーボードで選んでいるもの → 最後に遊んだもの の順に決める
+  // （どのゲームの筐体かが、選ぶ前からわかるようにするため）
+  function previewKey() {
+    if (hovered) return hovered;
+    if (selected >= 0) return MODE_KEYS[selected];
+    return lastPlayed;
+  }
+
   function draw() {
     if (current) {
       current.draw();
+      return;
+    }
+    const key = previewKey();
+    if (key === 'button' || key === 'three') {
+      // 斜め前から見た筐体。2 ボタンと 3 本爪では取り出し口の大きさが違うので、そのゲームの配置で描く
+      FloorRender.layout = MODES[key].layout;
+      FloorRender.drawMachine(Render.ctx, time);
     } else {
-      // メニューの後ろには、クラシックモードの筐体を背景として描く
+      // おまかせとクラシックは同じ、横から見た筐体
       Render.drawMachine(time);
     }
   }

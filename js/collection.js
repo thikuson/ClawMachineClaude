@@ -4,6 +4,8 @@ const Collection = {
   STORAGE_KEY: 'clawMachineClaude.save',
   counts: [],      // 種類ごとの、これまでに獲得した数
   highScores: {}, // 'classic' や 'button_easy' などの名前ごとのハイスコア（js/session.js の scoreKey）
+  level: 'normal', // メニューで最後に選んだ難しさ（次に開いたときも同じ難しさから始める）
+  SAVE_VERSION: 2, // 保存の形式の版。2 で難しさが 3 段階になった
   listElement: null,
 
   init(listElement) {
@@ -31,6 +33,19 @@ const Collection = {
       if (data.highScores) Object.assign(this.highScores, data.highScores);
       // 以前の形式（ハイスコアが 1 つだけ）はクラシックモードの記録として引き継ぐ
       if (data.highScore && !data.highScores) this.highScores.classic = data.highScore;
+      if (LEVEL_KEYS.includes(data.level)) this.level = data.level;
+      // 難しさが 2 段階だったころ（版 1）の「かんたん（揺れなし・ふつうの爪）」の記録は、今の「ふつう」と同じ遊び方なので移す。
+      // おまかせの「かんたん」は当時から大きく開く爪で揺れなしだったので、今の「かんたん」のまま残す
+      if ((data.saveVersion || 1) < 2) {
+        for (const mode of ['classic', 'button', 'three']) {
+          const old = this.highScores[mode + '_easy'];
+          if (old !== undefined) {
+            this.highScores[mode + '_normal'] = Math.max(old, this.highScores[mode + '_normal'] || 0);
+            delete this.highScores[mode + '_easy'];
+          }
+        }
+        this.save(); // 移したあとの形で保存し直す（次に開いたときに、もう一度移さないため）
+      }
     } catch (e) {
       // 読めなければ最初からにする
     }
@@ -41,6 +56,8 @@ const Collection = {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify({
         countsByName: Object.fromEntries(PRIZE_SPRITES.map((s, i) => [s.name, this.counts[i]])),
         highScores: this.highScores,
+        level: this.level,
+        saveVersion: this.SAVE_VERSION,
       }));
     } catch (e) {
       // 保存できなくてもゲームは続ける
@@ -54,6 +71,12 @@ const Collection = {
     this.save();
     this.renderList();
     return isNew;
+  },
+
+  // メニューで難しさを選んだときに呼ぶ
+  setLevel(level) {
+    this.level = level;
+    this.save();
   },
 
   // ゲーム終了時に呼ぶ。ハイスコアを更新したら true を返す

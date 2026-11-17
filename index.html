@@ -6,7 +6,7 @@
   <title>クレーンゲーム</title>
   <!-- css と js の後ろの ?v= は版の印。スマホのブラウザが古い css・js を覚えたまま新しい index.html と
        組み合わせて表示が崩れることがあるので、内容を変えて公開するときはこの印を全部書き換える -->
-  <link rel="stylesheet" href="css/style.css?v=20261115b">
+  <link rel="stylesheet" href="css/style.css?v=20261117a">
 </head>
 <body>
   <main class="app">
@@ -25,52 +25,35 @@
       <!-- メニュー画面。キャンバスの上に重ねて表示する -->
       <div id="menu" class="menu">
         <p class="menu-title">あそびかたを えらんでね</p>
-        <!-- 左の列が かんたん（揺れなし）、右の列が むずかしい（揺れあり）。行ごとに同じ遊び方 -->
-        <div class="menu-grid">
-          <p class="menu-level easy">かんたん<small>揺れなし</small></p>
-          <p class="menu-level hard">むずかしい<small>揺れあり</small></p>
-          <button type="button" class="menu-item easy" data-mode="auto" data-level="easy">
+        <!-- 難しさは全部のゲームで共通。先に選んでから、下の 4 つのゲームのどれかを押す -->
+        <div class="level-tabs" role="radiogroup" aria-label="難しさ">
+          <button type="button" class="level-tab easy" data-level="easy" role="radio">かんたん</button>
+          <button type="button" class="level-tab normal" data-level="normal" role="radio">ふつう</button>
+          <button type="button" class="level-tab hard" data-level="hard" role="radio">むずかしい</button>
+        </div>
+        <div class="menu-list">
+          <button type="button" class="menu-item" data-mode="auto">
             <span class="menu-name">1. おまかせ</span>
             <span class="menu-desc">自動で動くアームを、スペースで下ろすだけ</span>
-            <span class="menu-score">ハイスコア：<span data-score-for="auto" data-score-level="easy">0</span></span>
+            <span class="menu-score">ハイスコア：<span data-score-for="auto">0</span></span>
           </button>
-          <button type="button" class="menu-item hard" data-mode="auto" data-level="hard">
-            <span class="menu-name">5. おまかせ</span>
-            <span class="menu-desc">自動で動くアームを、スペースで下ろすだけ</span>
-            <span class="menu-score">ハイスコア：<span data-score-for="auto" data-score-level="hard">0</span></span>
-          </button>
-          <button type="button" class="menu-item easy" data-mode="classic" data-level="easy">
+          <button type="button" class="menu-item" data-mode="classic">
             <span class="menu-name">2. クラシック</span>
             <span class="menu-desc">← → で動かして、スペースで下ろす</span>
-            <span class="menu-score">ハイスコア：<span data-score-for="classic" data-score-level="easy">0</span></span>
+            <span class="menu-score">ハイスコア：<span data-score-for="classic">0</span></span>
           </button>
-          <button type="button" class="menu-item hard" data-mode="classic" data-level="hard">
-            <span class="menu-name">6. クラシック</span>
-            <span class="menu-desc">← → で動かして、スペースで下ろす</span>
-            <span class="menu-score">ハイスコア：<span data-score-for="classic" data-score-level="hard">0</span></span>
-          </button>
-          <button type="button" class="menu-item easy" data-mode="button" data-level="easy">
+          <button type="button" class="menu-item" data-mode="button">
             <span class="menu-name">3. 2ボタン</span>
             <span class="menu-desc">① で右へ、② で奥へ。離すと下りる</span>
-            <span class="menu-score">ハイスコア：<span data-score-for="button" data-score-level="easy">0</span></span>
+            <span class="menu-score">ハイスコア：<span data-score-for="button">0</span></span>
           </button>
-          <button type="button" class="menu-item hard" data-mode="button" data-level="hard">
-            <span class="menu-name">7. 2ボタン</span>
-            <span class="menu-desc">① で右へ、② で奥へ。離すと下りる</span>
-            <span class="menu-score">ハイスコア：<span data-score-for="button" data-score-level="hard">0</span></span>
-          </button>
-          <button type="button" class="menu-item easy" data-mode="three" data-level="easy">
+          <button type="button" class="menu-item" data-mode="three">
             <span class="menu-name">4. 3本爪</span>
             <span class="menu-desc">十字キーで自由に動かす。大きな景品が3つ</span>
-            <span class="menu-score">ハイスコア：<span data-score-for="three" data-score-level="easy">0</span></span>
-          </button>
-          <button type="button" class="menu-item hard" data-mode="three" data-level="hard">
-            <span class="menu-name">8. 3本爪</span>
-            <span class="menu-desc">十字キーで自由に動かす。大きな景品が3つ</span>
-            <span class="menu-score">ハイスコア：<span data-score-for="three" data-score-level="hard">0</span></span>
+            <span class="menu-score">ハイスコア：<span data-score-for="three">0</span></span>
           </button>
         </div>
-        <p class="menu-hint">クリックか、矢印キーで選んで Enter（1〜8 キーでも始まる）</p>
+        <p class="menu-hint">← → で難しさ、↑ ↓ で遊び方を選んで Enter（1〜4 キーでも始まる）</p>
       </div>
     </div>
 
@@ -113,30 +96,31 @@
         <button type="button" id="score-reset" class="zukan-reset">ハイスコアを リセット</button>
       </div>
     </section>
-    <p id="help-auto" class="help" hidden>キーボード：アームは自動で左右に動く。スペースで下ろす、R でリセット、M で効果音の切り替え</p>
-    <p id="help-classic" class="help" hidden>キーボード：← → で移動、スペースで下ろす、R でリセット、M で効果音の切り替え</p>
-    <p id="help-three" class="help" hidden>キーボード：← → で左右、↑ で奥、↓ で手前、スペースで下ろす。1 回 15 秒で自動で下りる。R でリセット、M で効果音の切り替え</p>
+    <p id="help-auto" class="help" hidden>キーボード：アームは自動で左右に動く。スペースか Enter で下ろす、R でリセット、M で効果音の切り替え</p>
+    <p id="help-classic" class="help" hidden>キーボード：← → で移動、スペースか Enter で下ろす、R でリセット、M で効果音の切り替え</p>
+    <p id="help-three" class="help" hidden>キーボード：← → で左右、↑ で奥、↓ で手前、スペースか Enter で下ろす。1 回 15 秒で自動で下りる。R でリセット、M で効果音の切り替え</p>
     <p id="help-button" class="help" hidden>キーボード：→（または 1）が ①、↑（または 2）が ②。R でリセット、M で効果音の切り替え</p>
   </main>
 
   <!-- ES モジュールを使わず、読み込み順で依存関係を解決する（?v= の印は、上の css の説明を参照） -->
-  <script src="js/config.js?v=20261115b"></script>
-  <script src="js/sprites.js?v=20261115b"></script>
-  <script src="js/input.js?v=20261115b"></script>
-  <script src="js/prize.js?v=20261115b"></script>
-  <script src="js/swing.js?v=20261115b"></script>
-  <script src="js/claw.js?v=20261115b"></script>
-  <script src="js/effects.js?v=20261115b"></script>
-  <script src="js/sound.js?v=20261115b"></script>
-  <script src="js/collection.js?v=20261115b"></script>
-  <script src="js/render.js?v=20261115b"></script>
-  <script src="js/render_floor.js?v=20261115b"></script>
-  <script src="js/session.js?v=20261115b"></script>
-  <script src="js/modes/classic.js?v=20261115b"></script>
-  <script src="js/modes/auto.js?v=20261115b"></script>
-  <script src="js/modes/floor.js?v=20261115b"></script>
-  <script src="js/modes/button.js?v=20261115b"></script>
-  <script src="js/modes/three_claw.js?v=20261115b"></script>
-  <script src="js/main.js?v=20261115b"></script>
+  <script src="js/config.js?v=20261117a"></script>
+  <script src="js/level.js?v=20261117a"></script>
+  <script src="js/sprites.js?v=20261117a"></script>
+  <script src="js/input.js?v=20261117a"></script>
+  <script src="js/prize.js?v=20261117a"></script>
+  <script src="js/swing.js?v=20261117a"></script>
+  <script src="js/claw.js?v=20261117a"></script>
+  <script src="js/effects.js?v=20261117a"></script>
+  <script src="js/sound.js?v=20261117a"></script>
+  <script src="js/collection.js?v=20261117a"></script>
+  <script src="js/render.js?v=20261117a"></script>
+  <script src="js/render_floor.js?v=20261117a"></script>
+  <script src="js/session.js?v=20261117a"></script>
+  <script src="js/modes/classic.js?v=20261117a"></script>
+  <script src="js/modes/auto.js?v=20261117a"></script>
+  <script src="js/modes/floor.js?v=20261117a"></script>
+  <script src="js/modes/button.js?v=20261117a"></script>
+  <script src="js/modes/three_claw.js?v=20261117a"></script>
+  <script src="js/main.js?v=20261117a"></script>
 </body>
 </html>

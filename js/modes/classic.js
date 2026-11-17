@@ -6,8 +6,8 @@ const ClassicMode = {
 
   start() {
     this.session = new GameSession('classic', { restartHint: 'R か「下ろす」で もういちど' });
-    // おまかせモードのあとでも、ふつうのアームに戻す
-    Claw.cfg = CONFIG.claw;
+    // 難しさに合わせて、爪の開きとつかむ力を決める（おまかせモードのあとでも、手で動かすアームに戻す）
+    Claw.cfg = Level.apply(CONFIG.claw);
     Claw.autoMove = false;
     this.reset();
     Claw.onResult = (kind) => {

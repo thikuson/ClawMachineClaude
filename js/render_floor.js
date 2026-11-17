@@ -34,7 +34,7 @@ const FloorRender = {
 
     // 奥にあるものから順に描くと、手前のものが前に重なる
     const items = prizes.map((p) => ({ z: p.z, draw: () => this.drawPrize(ctx, p) }));
-    items.push({ z: mode.headZ() - 0.5, draw: () => this.drawClaw(ctx, claw, mode) });
+    items.push({ z: mode.headZ() - 0.5, draw: () => this.drawClawInCase(ctx, claw, mode) });
     // 影は床の上なので、すべての物より先に描く
     for (const p of prizes) this.drawShadow(ctx, p.x, p.z, p.r, p.h);
     this.drawShadow(ctx, mode.headX(), mode.headZ(), mode.arm.tipOpen * 0.5, claw.h - mode.arm.armLength);
@@ -42,6 +42,17 @@ const FloorRender = {
     for (const item of items) item.draw();
 
     mode.control.drawPanel(ctx, mode);
+  },
+
+  // かんたんでは爪を大きく開くので、壁ぎわでケースの外にはみ出す。ケースの内側だけに描く（壁の向こうに隠れて見える）
+  drawClawInCase(ctx, claw, mode) {
+    const box = CONFIG.case;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(box.x, 0, box.w, CONFIG.height);
+    ctx.clip();
+    this.drawClaw(ctx, claw, mode);
+    ctx.restore();
   },
 
   drawMachine(ctx, time) {

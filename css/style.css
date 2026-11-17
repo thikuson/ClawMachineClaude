@@ -215,62 +215,70 @@ body {
 .dpad .right { grid-column: 3; grid-row: 2; }
 .dpad .down { grid-column: 2; grid-row: 3; }
 
-/* メニュー：2 列（かんたん・むずかしい）× 4 行（遊び方） */
-.menu-grid {
+/* メニュー：上に難しさの切り替え（3 つ）、下に 4 つのゲーム */
+.level-tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.level-tab {
+  padding: 8px 4px;
+  border: 3px solid transparent;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.level-tab.selected { opacity: 1; border-color: #ffe066; }
+
+.level-tab.easy { background: #3d5a3a; color: #c9f5b8; }
+
+.level-tab.normal { background: #3a4a6a; color: #c4d8ff; }
+
+.level-tab.hard { background: #5a3a4f; color: #ffc4d6; }
+
+.menu-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 8px;
   width: 100%;
-  max-width: 420px;
 }
 
-.menu-level {
-  margin: 0;
-  padding: 4px;
-  border-radius: 8px;
-  text-align: center;
-  font-weight: bold;
-}
+/* ゲームのボタンの枠は、選んでいる難しさの色にする */
+.menu[data-level="easy"] .menu-item { border-color: #4f7a4a; }
+.menu[data-level="easy"] .menu-item.selected,
+.menu[data-level="easy"] .menu-item:hover { border-color: #9cf07a; }
+.menu[data-level="normal"] .menu-item { border-color: #4f5f8a; }
+.menu[data-level="normal"] .menu-item.selected,
+.menu[data-level="normal"] .menu-item:hover { border-color: #8fb4ff; }
+.menu[data-level="hard"] .menu-item { border-color: #8a4f6f; }
+.menu[data-level="hard"] .menu-item.selected,
+.menu[data-level="hard"] .menu-item:hover { border-color: #ff7aa8; }
 
-.menu-level small { display: block; font-size: 0.75rem; font-weight: normal; opacity: 0.85; }
-
-.menu-level.easy { background: #3d5a3a; color: #c9f5b8; }
-
-.menu-level.hard { background: #5a3a4f; color: #ffc4d6; }
-
-.menu-grid .menu-item { width: auto; padding: 8px 10px; }
-
-.menu-grid .menu-name { font-size: 1rem; }
-
-.menu-grid .menu-desc { font-size: 0.72rem; }
-
-.menu-item.easy { border-color: #4f7a4a; }
-
-.menu-item.hard { border-color: #8a4f6f; }
-
-.menu-item.easy.selected, .menu-item.easy:hover { border-color: #9cf07a; }
-
-.menu-item.hard.selected, .menu-item.hard:hover { border-color: #ff7aa8; }
-
-/* スマホなど幅のせまい画面では、メニューが 4 行でも画面に収まるように詰める
+/* スマホなど幅のせまい画面では、メニューが画面に収まるように詰める
    （キーボードの説明はスマホでは使わないので隠す） */
 @media (max-width: 520px) {
   .menu { padding: 8px; gap: 6px; }
   .menu-title { margin: 0; font-size: 1.05rem; }
   .menu-hint { display: none; }
-  .menu-grid { gap: 6px; }
-  .menu-level { padding: 2px; }
-  .menu-grid .menu-item { gap: 2px; padding: 5px 8px; border-width: 2px; }
-  .menu-grid .menu-name { font-size: 0.9rem; }
-  .menu-grid .menu-desc { font-size: 0.66rem; line-height: 1.3; }
-  .menu-grid .menu-score { font-size: 0.72rem; }
+  .level-tab { padding: 6px 2px; font-size: 0.9rem; border-width: 2px; }
+  .menu-list { gap: 6px; }
+  .menu-item { gap: 2px; padding: 6px 12px; border-width: 2px; }
+  .menu-name { font-size: 1rem; }
+  .menu-desc { font-size: 0.72rem; }
+  .menu-score { font-size: 0.75rem; }
 }
 
-/* さらにせまい画面（幅 360px 以下）では、「揺れなし・揺れあり」の小さい説明も省く */
+/* さらにせまい画面（幅 360px 以下）では、もう少し詰める */
 @media (max-width: 360px) {
-  .menu-level small { display: none; }
-  .menu-title { font-size: 0.95rem; }
   .menu { gap: 4px; }
-  .menu-grid { gap: 4px; }
-  .menu-grid .menu-item { padding: 4px 6px; }
+  .menu-title { font-size: 0.95rem; }
+  .menu-list { gap: 4px; }
+  .menu-item { padding: 4px 10px; }
 }

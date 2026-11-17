@@ -38,6 +38,8 @@ function createFloorMode(options) {
 
     start() {
       FloorRender.layout = this.layout;
+      // 難しさに合わせて、爪の開きとつかむ力を決める
+      this.arm = Level.apply(options.arm);
       this.session = new GameSession(this.key, { restartHint: options.restartHint });
       this.reset();
     },
@@ -263,8 +265,10 @@ function createFloorMode(options) {
         this.report('miss');
         return;
       }
-      const offset = Math.hypot(target.x - this.headX(), target.z - this.headZ()) / target.r;
-      const grip = PRIZE_SPRITES[target.type].grip * this.arm.gripFactor;
+      // つかむ力が強いほど、真ん中からのずれが小さいのと同じ扱いになり、景品もつかみやすくなる（クラシックと同じ考え方）
+      const power = this.arm.gripPower || 1;
+      const offset = Math.hypot(target.x - this.headX(), target.z - this.headZ()) / target.r / power;
+      const grip = PRIZE_SPRITES[target.type].grip * this.arm.gripFactor * Math.sqrt(power);
       const grabChance = Math.max(0.1, Math.min(0.95, (1.05 - offset * 0.8) * grip));
       if (Math.random() > grabChance) {
         // 転がる景品は、爪に押されて逃げていく
@@ -303,7 +307,7 @@ function createFloorMode(options) {
       c.held.z = this.headZ() + c.holdOffsetZ;
       c.held.h = this.tipH() - c.held.r * 0.65;
       c.carryTime += dt;
-      const grip = PRIZE_SPRITES[c.held.type].grip * this.arm.gripFactor;
+      const grip = PRIZE_SPRITES[c.held.type].grip * this.arm.gripFactor * Math.sqrt(this.arm.gripPower || 1);
       const timeUp = c.slipAt >= 0 && c.carryTime >= c.slipAt;
       if (timeUp || Swing.shouldSlip(dt, [c.swingX, c.swingZ], grip)) {
         this.dropHeld();

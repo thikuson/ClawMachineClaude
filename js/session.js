@@ -1,14 +1,16 @@
 // 1 ゲーム分の進行（スコア・残り回数・メッセージ・終了判定）。どのモードでも共通で使う
 function GameSession(modeKey, options) {
-  // ハイスコアをモードと難しさごとに分けるための名前。揺れありはモード名のまま（以前の記録を引き継ぐため）、
-  // 揺れなし（かんたん）は後ろに '_easy' を付ける
-  this.modeKey = GameSession.scoreKey(modeKey, Swing.enabled);
+  // ハイスコアを遊び方と難しさごとに分けるための名前
+  this.modeKey = GameSession.scoreKey(modeKey, Level.key);
   this.restartHint = options.restartHint;
   this.reset();
 }
 
-GameSession.scoreKey = function (modeKey, swingOn) {
-  return swingOn ? modeKey : modeKey + '_easy';
+// むずかしいは遊び方の名前のまま（以前の「揺れあり」の記録を引き継ぐため）、
+// ふつうは後ろに '_normal'、かんたんは '_easy' を付ける
+GameSession.scoreKey = function (modeKey, levelKey) {
+  if (levelKey === 'hard') return modeKey;
+  return modeKey + '_' + levelKey;
 };
 
 // ゲーム内のセリフ
@@ -101,7 +103,7 @@ GameSession.prototype.drawHud = function () {
     score: this.score,
     playsLeft: this.playsLeft,
     highScore: Collection.highScores[this.modeKey] || 0,
-    swingOn: Swing.enabled,
+    levelLabel: Level.settings.label + (Level.settings.swing ? '（揺れあり）' : '（揺れなし）'),
     message: this.message || this.help,
     soundOn: Sound.enabled,
   });
