@@ -134,20 +134,23 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 10px;
-  padding: 24px;
+  gap: 8px;
+  padding: 16px;
   border-radius: 12px;
   background: rgba(26, 23, 48, 0.85);
 }
 
-.menu-title { margin: 0 0 8px; font-size: 1.3rem; font-weight: bold; color: #ffe066; }
+.menu-title { margin: 0 0 2px; font-size: 1.3rem; font-weight: bold; color: #ffe066; }
 
+/* 名前とハイスコアを 1 行目に左右に並べ、説明を 2 行目に置く（遊び方が 6 つあるので、縦に詰めて画面に収める） */
 .menu-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: min(320px, 100%);
-  padding: 10px 16px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  column-gap: 10px;
+  row-gap: 2px;
+  width: min(340px, 100%);
+  padding: 7px 14px;
   border: 3px solid #5a4f8c;
   border-radius: 12px;
   background: #2b2745;
@@ -158,11 +161,11 @@ body {
 
 .menu-item.selected, .menu-item:hover { border-color: #ffe066; background: #3d3866; }
 
-.menu-name { font-size: 1.2rem; font-weight: bold; }
+.menu-name { font-size: 1.1rem; font-weight: bold; }
 
-.menu-desc { font-size: 0.85rem; opacity: 0.85; }
+.menu-desc { grid-column: 1 / -1; grid-row: 2; font-size: 0.8rem; opacity: 0.85; }
 
-.menu-score { font-size: 0.8rem; color: #ffe066; }
+.menu-score { grid-column: 2; grid-row: 1; font-size: 0.8rem; color: #ffe066; white-space: nowrap; }
 
 .menu-hint { margin: 8px 0 0; font-size: 0.8rem; opacity: 0.7; }
 
@@ -261,7 +264,8 @@ body {
 .menu[data-level="hard"] .menu-item.selected,
 .menu[data-level="hard"] .menu-item:hover { border-color: #ff7aa8; }
 
-/* スマホなど幅のせまい画面では、メニューが画面に収まるように詰める
+/* スマホなど幅のせまい画面では、メニューが画面に収まるように詰める。
+   遊び方が 6 つあり、説明まで出すと画面からはみ出すので、説明は省いて名前とハイスコアの 1 行だけにする
    （キーボードの説明はスマホでは使わないので隠す） */
 @media (max-width: 520px) {
   .menu { padding: 8px; gap: 6px; }
@@ -269,17 +273,17 @@ body {
   .menu-hint { display: none; }
   .level-tab { padding: 6px 2px; font-size: 0.9rem; border-width: 2px; }
   .menu-list { gap: 6px; }
-  .menu-item { gap: 2px; padding: 6px 12px; border-width: 2px; }
+  .menu-item { padding: 6px 12px; border-width: 2px; }
   .menu-name { font-size: 1rem; }
-  .menu-desc { font-size: 0.72rem; }
+  .menu-desc { display: none; }
   .menu-score { font-size: 0.75rem; }
 }
 
-/* さらにせまい画面（幅 360px 以下）では、もう少し詰める。遊び方の説明は省き、名前とハイスコアだけにする */
+/* さらにせまい画面（幅 360px 以下）では、もう少し詰める */
 @media (max-width: 360px) {
-  .menu-desc { display: none; }
   .menu { gap: 4px; }
   .menu-title { font-size: 0.95rem; }
   .menu-list { gap: 4px; }
-  .menu-item { padding: 4px 10px; }
+  .menu-item { padding: 5px 10px; }
+  .menu-name { font-size: 0.95rem; }
 }

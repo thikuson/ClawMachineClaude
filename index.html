@@ -6,7 +6,7 @@
   <title>クレーンゲーム</title>
   <!-- css と js の後ろの ?v= は版の印。スマホのブラウザが古い css・js を覚えたまま新しい index.html と
        組み合わせて表示が崩れることがあるので、内容を変えて公開するときはこの印を全部書き換える -->
-  <link rel="stylesheet" href="css/style.css?v=20261118a">
+  <link rel="stylesheet" href="css/style.css?v=20261118b">
 </head>
 <body>
   <main class="app">
@@ -54,11 +54,16 @@
           </button>
           <button type="button" class="menu-item" data-mode="ring">
             <span class="menu-name">5. リング</span>
-            <span class="menu-desc">リングを「？」のフックに引っかけると、景品が全部落ちる</span>
+            <span class="menu-desc">リングを「？」のフックにかけて、景品を全部落とす</span>
             <span class="menu-score">ハイスコア：<span data-score-for="ring">0</span></span>
           </button>
+          <button type="button" class="menu-item" data-mode="shovel">
+            <span class="menu-name">6. ショベル</span>
+            <span class="menu-desc">回るテーブルの景品を、ショベルですくって運ぶ</span>
+            <span class="menu-score">ハイスコア：<span data-score-for="shovel">0</span></span>
+          </button>
         </div>
-        <p class="menu-hint">← → で難しさ、↑ ↓ で遊び方を選んで Enter（1〜5 キーでも始まる）</p>
+        <p class="menu-hint">← → で難しさ、↑ ↓ で遊び方を選んで Enter（1〜6 キーでも始まる）</p>
       </div>
     </div>
 
@@ -79,6 +84,11 @@
       <button type="button" data-key="ArrowLeft" aria-label="左へ移動">←</button>
       <button type="button" data-key="Space" class="drop">下ろす</button>
       <button type="button" data-key="ArrowRight" aria-label="右へ移動">→</button>
+    </div>
+
+    <!-- ショベルモードの操作ボタン（下ろすだけ） -->
+    <div id="controls-shovel" class="controls" hidden>
+      <button type="button" data-key="Space" class="drop">下ろす</button>
     </div>
 
     <!-- 2 ボタンモードの操作ボタン -->
@@ -112,29 +122,31 @@
     <p id="help-classic" class="help" hidden>キーボード：← → で移動、スペースか Enter で下ろす、R でリセット、M で効果音の切り替え</p>
     <p id="help-three" class="help" hidden>キーボード：← → で左右、↑ で奥、↓ で手前、スペースか Enter で下ろす。1 回 15 秒で自動で下りる。R でリセット、M で効果音の切り替え</p>
     <p id="help-ring" class="help" hidden>キーボード：← → で移動、スペースか Enter で下ろす。リングはひもで揺れながら下ります。フックの先の下にもぐったリングを引き上げると、先が輪をくぐって引っかかり、台が傾いて景品が全部取り出し口へ。R でリセット、M で効果音の切り替え</p>
+    <p id="help-shovel" class="help" hidden>キーボード：スペースか Enter でショベルを下ろす。ショベルは「⊃」の形に動いて毎回同じ場所に下り、テーブルの手前を少しだけ左へ引いて景品をすくい、手前の取り出し口へ運ぶ。R でリセット、M で効果音の切り替え</p>
     <p id="help-button" class="help" hidden>キーボード：→（または 1）が ①、↑（または 2）が ②。R でリセット、M で効果音の切り替え</p>
   </main>
 
   <!-- ES モジュールを使わず、読み込み順で依存関係を解決する（?v= の印は、上の css の説明を参照） -->
-  <script src="js/config.js?v=20261118a"></script>
-  <script src="js/level.js?v=20261118a"></script>
-  <script src="js/sprites.js?v=20261118a"></script>
-  <script src="js/input.js?v=20261118a"></script>
-  <script src="js/prize.js?v=20261118a"></script>
-  <script src="js/swing.js?v=20261118a"></script>
-  <script src="js/claw.js?v=20261118a"></script>
-  <script src="js/effects.js?v=20261118a"></script>
-  <script src="js/sound.js?v=20261118a"></script>
-  <script src="js/collection.js?v=20261118a"></script>
-  <script src="js/render.js?v=20261118a"></script>
-  <script src="js/render_floor.js?v=20261118a"></script>
-  <script src="js/session.js?v=20261118a"></script>
-  <script src="js/modes/classic.js?v=20261118a"></script>
-  <script src="js/modes/auto.js?v=20261118a"></script>
-  <script src="js/modes/floor.js?v=20261118a"></script>
-  <script src="js/modes/button.js?v=20261118a"></script>
-  <script src="js/modes/three_claw.js?v=20261118a"></script>
-  <script src="js/modes/ring.js?v=20261118a"></script>
-  <script src="js/main.js?v=20261118a"></script>
+  <script src="js/config.js?v=20261118b"></script>
+  <script src="js/level.js?v=20261118b"></script>
+  <script src="js/sprites.js?v=20261118b"></script>
+  <script src="js/input.js?v=20261118b"></script>
+  <script src="js/prize.js?v=20261118b"></script>
+  <script src="js/swing.js?v=20261118b"></script>
+  <script src="js/claw.js?v=20261118b"></script>
+  <script src="js/effects.js?v=20261118b"></script>
+  <script src="js/sound.js?v=20261118b"></script>
+  <script src="js/collection.js?v=20261118b"></script>
+  <script src="js/render.js?v=20261118b"></script>
+  <script src="js/render_floor.js?v=20261118b"></script>
+  <script src="js/session.js?v=20261118b"></script>
+  <script src="js/modes/classic.js?v=20261118b"></script>
+  <script src="js/modes/auto.js?v=20261118b"></script>
+  <script src="js/modes/floor.js?v=20261118b"></script>
+  <script src="js/modes/button.js?v=20261118b"></script>
+  <script src="js/modes/three_claw.js?v=20261118b"></script>
+  <script src="js/modes/ring.js?v=20261118b"></script>
+  <script src="js/modes/shovel.js?v=20261118b"></script>
+  <script src="js/main.js?v=20261118b"></script>
 </body>
 </html>

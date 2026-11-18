@@ -5,13 +5,14 @@
   Input.init();
   Collection.init(document.getElementById('zukan-list'));
   RingMode.setUp(); // メニューの背景に、景品を載せた台とリングを出せるようにしておく
+  ShovelMode.setUp(); // メニューの背景に、回るテーブルと景品を出せるようにしておく
 
-  const MODES = { auto: AutoMode, classic: ClassicMode, button: ButtonMode, three: ThreeClawMode, ring: RingMode };
-  // メニューの上から順。数字キーの 1〜5 もこの順
-  const MODE_KEYS = ['auto', 'classic', 'button', 'three', 'ring'];
+  const MODES = { auto: AutoMode, classic: ClassicMode, button: ButtonMode, three: ThreeClawMode, ring: RingMode, shovel: ShovelMode };
+  // メニューの上から順。数字キーの 1〜6 もこの順
+  const MODE_KEYS = ['auto', 'classic', 'button', 'three', 'ring', 'shovel'];
 
   const menu = document.getElementById('menu');
-  const menuButtons = Array.from(menu.querySelectorAll('[data-mode]'));   // 4 つのゲーム
+  const menuButtons = Array.from(menu.querySelectorAll('[data-mode]'));   // 6 つのゲーム
   const levelButtons = Array.from(menu.querySelectorAll('.level-tab'));  // かんたん・ふつう・むずかしい
   const scoreLabels = Array.from(menu.querySelectorAll('[data-score-for]'));
   const playBar = document.getElementById('play-bar'); // メニューへ・並べ直す のボタン
@@ -21,6 +22,7 @@
     button: document.getElementById('controls-button'),
     three: document.getElementById('controls-three'),
     ring: document.getElementById('controls-ring'),
+    shovel: document.getElementById('controls-shovel'),
   };
   const helps = {
     auto: document.getElementById('help-auto'),
@@ -28,6 +30,7 @@
     button: document.getElementById('help-button'),
     three: document.getElementById('help-three'),
     ring: document.getElementById('help-ring'),
+    shovel: document.getElementById('help-shovel'),
   };
   const zukanProgress = document.getElementById('zukan-progress');
 
@@ -62,7 +65,7 @@
     updateMenuScores();
   }
 
-  // 4 つのゲームそれぞれに、選んでいる難しさでのハイスコアを表示する
+  // ゲームそれぞれに、選んでいる難しさでのハイスコアを表示する
   function updateMenuScores() {
     for (const label of scoreLabels) {
       const scoreKey = GameSession.scoreKey(label.dataset.scoreFor, levelKey);
@@ -171,7 +174,10 @@
       return;
     }
     const key = previewKey();
-    if (key === 'ring') {
+    if (key === 'shovel') {
+      // 斜め上から見た、回るテーブルの筐体
+      ShovelMode.drawScene(time);
+    } else if (key === 'ring') {
       // リングの筐体（台と景品とリング）
       RingMode.drawScene(time);
     } else if (key === 'button' || key === 'three') {

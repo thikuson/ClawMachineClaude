@@ -26,6 +26,8 @@ GameSession.MESSAGES = {
   hook: 'ひっかかった！ そのまま ひきあげろ！',
   ringRim: 'フックに あたって はじかれた…',
   ringOff: 'おしい！ リングが はずれちゃった…',
+  scoopMiss: 'あれれ… すくえなかった',
+  scoopSpill: 'おしい！ こぼれちゃった…',
 };
 
 GameSession.prototype.reset = function () {
