@@ -3,7 +3,7 @@
 // 床には「？」の形のフックが立っている。リングの輪はフックの針金を通り抜けられないが、フックの先（下を向いた端）だけは
 // 輪の中にくぐらせられる。先が輪に入ったまま引き上げると、輪がフックの曲がった部分に引っかかってフックが持ち上がり、
 // フックとつながったひもが引かれて台が傾き、台に載っている景品が全部取り出し口に流れ込む。
-// 取れたら、新しい景品が置かれ、フックの位置も変わって続く
+// 取れたら、新しい景品が置かれ、フックの位置・向き（右開き・左開き）・大きさと、リングの大きさも変わって続く
 const RingMode = {
   key: 'ring',
   session: null,
@@ -24,10 +24,11 @@ const RingMode = {
   // リング。x, y は輪の中心、px, py は 1 回前の計算での位置（いまの位置との差が速さになる）
   // mode は free（フックにかかっていない）/ entering（フックの先が輪をくぐっている途中）/ hooked（引っかかっている）。
   // ghost の間は、フックと当たらない（外れた直後など、輪とフックが重なっているときに、変にはじかれないようにする）
-  ring: { x: 0, y: 0, px: 0, py: 0, mode: 'free', ghost: false, touched: false },
+  ring: { x: 0, y: 0, px: 0, py: 0, mode: 'free', ghost: false, touched: false, scale: 1 },
 
-  // 床に立っている「？」のフック。x は曲がった部分の中心の位置、lifted は引き上げられた高さ
-  target: { x: 0, lifted: 0, liftedPrev: 0 },
+  // 床に立っている「？」のフック。x は柱（輪の中心の真下）の位置、lifted は引き上げられた高さ。
+  // dir は向き（1 なら柱が左で先が右に垂れる。-1 はその左右反対）、scale は大きさ（中を 1 とする）
+  target: { x: 0, lifted: 0, liftedPrev: 0, dir: 1, scale: 1 },
 
   // 傾く台と、載っている景品
   tray: { angle: 0, opening: false, closing: false, refillTimer: 0 },
@@ -87,8 +88,13 @@ const RingMode = {
       angle: 0,
     }));
 
+    // フックの位置・向き・大きさと、リングの大きさを毎回ランダムに変える
+    const pick = (list) => list[Math.floor(Math.random() * list.length)];
     const t = this.target;
     t.x = g.hookMinX + Math.random() * (g.hookMaxX - g.hookMinX);
+    t.dir = Math.random() < 0.5 ? 1 : -1;
+    t.scale = pick(g.sizes);
+    this.ring.scale = pick(g.sizes);
     t.lifted = 0;
     t.liftedPrev = 0;
     this.buildHook();
@@ -105,15 +111,20 @@ const RingMode = {
     return { x: this.arm.x, y: this.arm.y + CONFIG.ring.armLength };
   },
 
+  // いまのリングの半径（針金の中心まで）
+  ringR() {
+    return CONFIG.ring.ringR * this.ring.scale;
+  },
+
   // 支点からリングの中心までの長さ（ひもの長さ＋リングの半径）
   stringReach() {
-    return CONFIG.ring.stringLen + CONFIG.ring.ringR;
+    return CONFIG.ring.stringLen + this.ringR();
   },
 
   // アームがいちばん下まで下りたときの本体の高さ。ぶら下がったリングが、床にちょうど着くところ
   lowestY() {
     const g = CONFIG.ring;
-    return CONFIG.floorY - g.ringR - g.ringWire - this.stringReach() - g.armLength + 2;
+    return CONFIG.floorY - this.ringR() - g.ringWire - this.stringReach() - g.armLength + 2;
   },
 
   // アームの初期位置（引き上げたあとに戻る位置）。景品は台から取り出し口へ流れ込むので、取り出し口の上までは行かず、
@@ -122,33 +133,37 @@ const RingMode = {
     return this.armRange().min;
   },
 
-  // アームが動ける左右の範囲。リングが台や景品の上に下りないように、左は台の右端より右にする
+  // アームが動ける左右の範囲。リングが台や景品の上に下りないように、左は台の右端より右にする。
+  // リングの大きさが変わっても初期位置が動かないように、いちばん大きいリングで決める
   armRange() {
     const g = CONFIG.ring;
     return {
-      min: g.trayX + g.trayLength + g.ringR + g.ringWire + 6,
+      min: g.trayX + g.trayLength + g.ringR * Math.max(...g.sizes) + g.ringWire + 6,
       max: CONFIG.claw.maxX,
     };
   },
 
-  // フックの針金を、根元からフックの先まで細かい点の並びにしておく（フックの曲がった部分の中心を原点、y は床が基準）。
-  // s は根元からの長さ。リングとの当たり判定にも、描くのにも使う
+  // 「？」の形のフックの針金を、根元からフックの先まで細かい点の並びにしておく（柱の位置を x の原点、y は床が基準）。
+  // s は根元からの長さ。リングとの当たり判定にも、描くのにも使う。左右反対の向きのときは、x を反対にする
   buildHook() {
     const g = CONFIG.ring;
-    const r = g.curlR;
-    const topY = -g.hookHeight;      // いちばん上（床からの高さはマイナス）
-    const cy = topY + r + g.hookWire; // 曲がった部分の中心の高さ
+    const t = this.target;
+    const r = g.curlR * t.scale;
+    const bottomY = -g.postHeight;   // 柱のいちばん上（輪のいちばん下）の高さ。床からの高さはマイナス
+    const cy = bottomY - r;          // 輪の中心の高さ
     const pts = [];
     const baseY = -8;                // 台座の上
-    // 柱（曲がった部分の左端から真下へ）
-    for (let y = baseY; y > cy; y -= 4) pts.push({ x: -r, y });
-    // 曲がった部分（左から上を通って右へ回り、先が下を向く）
+    // 柱（台座から真上へ、輪のいちばん下まで）
+    for (let y = baseY; y > bottomY; y -= 4) pts.push({ x: 0, y });
+    // 輪（いちばん下から左を通って上へ回り、右で先が下を向く。円の 3/4）
+    const start = Math.PI / 2;
     const end = Math.PI * (2 + this.levelSettings().tipAngle);
-    const steps = Math.ceil((end - Math.PI) * r / 2);
+    const steps = Math.ceil((end - start) * r / 2);
     for (let i = 0; i <= steps; i++) {
-      const a = Math.PI + (end - Math.PI) * i / steps;
+      const a = start + (end - start) * i / steps;
       pts.push({ x: Math.cos(a) * r, y: cy + Math.sin(a) * r });
     }
+    if (t.dir < 0) pts.forEach((p) => { p.x = -p.x; });
     let s = 0;
     pts.forEach((p, i) => {
       if (i > 0) s += Math.hypot(p.x - pts[i - 1].x, p.y - pts[i - 1].y);
@@ -172,9 +187,20 @@ const RingMode = {
     return this.hookPoint(this.hook.pts.length - 1);
   },
 
+  // 床からフックのいちばん上までの高さ。柱の高さはどの大きさでも同じで、輪の大きさの分だけ高くなる
+  hookHeight() {
+    const g = CONFIG.ring;
+    return g.postHeight + g.curlR * this.target.scale * 2 + g.hookWire;
+  },
+
+  // フックの柱の x 座標（輪の真下）
+  hookPostX() {
+    return this.target.x;
+  },
+
   // フックのいちばん上の高さ。引き上げられると上がる
   hookTopY() {
-    return CONFIG.floorY - CONFIG.ring.hookHeight - this.target.lifted;
+    return CONFIG.floorY - this.hookHeight() - this.target.lifted;
   },
 
   // 点 (x, y) にいちばん近い、フックの針金の上の点。dist はその距離、s は根元からの長さ
@@ -365,7 +391,7 @@ const RingMode = {
   keepInCase() {
     const g = CONFIG.ring;
     const ring = this.ring;
-    const outer = g.ringR + g.ringWire;
+    const outer = this.ringR() + g.ringWire;
     const box = CONFIG.case;
     const floor = CONFIG.floorY - outer;
     if (ring.y > floor) {
@@ -381,7 +407,7 @@ const RingMode = {
     const g = CONFIG.ring;
     const ring = this.ring;
     const lv = this.levelSettings();
-    const R = g.ringR;
+    const R = this.ringR();
     const touch = g.ringWire + g.hookWire; // 針金どうしが触れる距離（太さの半分の和）
     const q = this.closestOnHook(ring.x, ring.y);
     if (q.dist < 1e-6) return;
@@ -568,6 +594,7 @@ const RingMode = {
       if (t.refillTimer <= 0) {
         t.refillTimer = 0;
         this.setUp();
+        this.hangRing(); // リングの大きさが変わるので、ぶら下げ直す
       }
     }
   },
@@ -613,10 +640,10 @@ const RingMode = {
     // フックの台座
     const t = this.target;
     ctx.fillStyle = '#8f89b8';
-    ctx.fillRect(Math.round(t.x - g.curlR) - 12, CONFIG.floorY - 8, 24, 8);
+    const footX = this.hookPostX();
+    ctx.fillRect(Math.round(footX) - 12, CONFIG.floorY - 8, 24, 8);
 
     // 留め具とフックの根元をつなぐひも。フックを引き上げるほど張る
-    const footX = t.x - g.curlR;
     const footY = CONFIG.floorY - 8 - t.lifted;
     const taut = Math.min(1, t.lifted / g.pullToOpen);
     ctx.strokeStyle = '#ff7aa8';
@@ -629,7 +656,7 @@ const RingMode = {
     this.drawTargetHook(ctx);
   },
 
-  // 「？」の形のフック（柱と、上の曲がった部分）
+  // 「？」の形のフック（柱と、上の円の 3/4 の輪）
   drawTargetHook(ctx) {
     const g = CONFIG.ring;
     ctx.strokeStyle = '#d9d6f0';
@@ -686,18 +713,18 @@ const RingMode = {
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(p.x, p.y);
-    ctx.lineTo(ring.x + dx / d * g.ringR, ring.y + dy / d * g.ringR);
+    ctx.lineTo(ring.x + dx / d * this.ringR(), ring.y + dy / d * this.ringR());
     ctx.stroke();
 
     // リング（まん丸の輪）
     this.drawRing(ctx);
 
-    // フックが輪を通っているときは、輪の右半分のところだけフックを輪の手前に描き直して、輪にくぐっているように見せる
+    // フックが輪を通っているときは、輪の先の側の半分（右開きなら右半分）だけフックを輪の手前に描き直して、輪にくぐっているように見せる
     if (ring.mode !== 'free') {
-      const outer = g.ringR + g.ringWire + 2;
+      const outer = this.ringR() + g.ringWire + 2;
       ctx.save();
       ctx.beginPath();
-      ctx.rect(ring.x, ring.y - outer, outer, outer * 2);
+      ctx.rect(this.target.dir > 0 ? ring.x : ring.x - outer, ring.y - outer, outer, outer * 2);
       ctx.clip();
       this.drawTargetHook(ctx);
       ctx.restore();
@@ -712,20 +739,21 @@ const RingMode = {
   drawRing(ctx) {
     const g = CONFIG.ring;
     const ring = this.ring;
+    const R = this.ringR();
     ctx.strokeStyle = '#b8901c';
     ctx.lineWidth = g.ringWire * 2 + 1;
     ctx.beginPath();
-    ctx.arc(ring.x, ring.y, g.ringR, 0, Math.PI * 2);
+    ctx.arc(ring.x, ring.y, R, 0, Math.PI * 2);
     ctx.stroke();
     ctx.strokeStyle = '#ffd23f';
     ctx.lineWidth = g.ringWire * 2 - 1;
     ctx.beginPath();
-    ctx.arc(ring.x, ring.y, g.ringR, 0, Math.PI * 2);
+    ctx.arc(ring.x, ring.y, R, 0, Math.PI * 2);
     ctx.stroke();
     ctx.strokeStyle = '#fff3b0';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(ring.x, ring.y, g.ringR, Math.PI * 1.05, Math.PI * 1.45);
+    ctx.arc(ring.x, ring.y, R, Math.PI * 1.05, Math.PI * 1.45);
     ctx.stroke();
   },
 };

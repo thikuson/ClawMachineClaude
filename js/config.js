@@ -45,13 +45,15 @@ const CONFIG = {
     trayLength: 130,   // 台の長さ
     openAngle: 0.5,    // 台が傾く角度（ラジアン）
     prizeCount: 3,     // 台に載せる景品の数
-    hookMinX: 330,     // 「？」のフックを立てる範囲（フックの曲がった部分の中心の x 座標）
+    hookMinX: 330,     // 「？」のフックを立てる範囲（フックの柱と輪の中心の x 座標）
     hookMaxX: 400,
-    hookHeight: 56,    // 床からフックのいちばん上までの高さ
-    curlR: 11,         // フックの上の曲がった部分の半径
+    postHeight: 46,    // 床からフックの柱のいちばん上（輪のいちばん下）までの高さ。どの大きさでも同じ。
+                       // 小さいフックと大きいリングの組み合わせでも、フックの先の下にリングがくぐれる高さにしてある
+    curlR: 11,         // フックの上の輪（円の 3/4）の半径（中の大きさ）
     hookWire: 3,       // フックの針金の太さの半分
-    ringR: 14,         // リングの半径（針金の中心まで）
+    ringR: 14,         // リングの半径（針金の中心まで、中の大きさ）
     ringWire: 2.5,     // リングの針金の太さの半分
+    sizes: [0.75, 1, 1.3], // フックとリングの大きさ（小・中・大）。景品が取れるたびに、それぞれランダムに選び直す（curlR・ringR は中の大きさ）
     armLength: 30,     // 本体からリングを下げる棒の先までの長さ
     stringLen: 22,     // 棒の先からリングの上のふちまでのひもの長さ。リングはこのひもで振り子のように揺れる
     dropKick: 35,      // 下ろし始めにリングが横に揺れ出す速さの最大値（px/秒）
@@ -61,11 +63,11 @@ const CONFIG = {
     maxLift: 60,       // フックが上がれる高さ。ここまで上がると、リングがフックから抜ける
     // 難しさごとの違い。damping は揺れの止まりやすさ、tipZone はフックの先の、リングがくぐれる部分の長さ、
     // tipFacing はリングがどれだけフックの先の正面から来ればくぐれるか（小さいほど甘い）、slip は引き上げ中に外れる確率、
-    // tipAngle はフックの曲がった部分の終わり（先）の角度（×π）。0 なら先が真下を向き、大きいほど内側へ巻き込んでくぐらせにくくなる
+    // tipAngle はフックの輪の終わり（先）の角度（×π）。0 なら先が真下を向き、大きいほど内側へ巻き込んでくぐらせにくくなる
     levels: {
       easy:   { damping: 1.6, tipZone: 14, tipFacing: -0.4, slip: 0.03, tipAngle: 0 },
-      normal: { damping: 0.9, tipZone: 5, tipFacing: 0.3, slip: 0.1, tipAngle: 0.12 },
-      hard:   { damping: 0.3, tipZone: 4, tipFacing: 0.4, slip: 0.18, tipAngle: 0.2 },
+      normal: { damping: 0.9, tipZone: 5, tipFacing: 0.3, slip: 0.1, tipAngle: 0.05 },
+      hard:   { damping: 0.3, tipZone: 3, tipFacing: 0.55, slip: 0.25, tipAngle: 0.1 },
     },
   },
 
