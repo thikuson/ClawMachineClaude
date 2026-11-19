@@ -226,8 +226,9 @@ const RingMode = {
   update(dt) {
     this.time += dt;
     if (Input.wasPressed('KeyR')) this.reset();
+    // 終わったあとは「下ろす」で、もう一度遊べる（ランダムでは、今の景品のまま続けて遊ぶ）
     if (this.session.gameOver && Input.wasPressed('Space')) {
-      this.reset();
+      this.session.continueOr(() => this.reset());
       return;
     }
     this.updateArm(dt);

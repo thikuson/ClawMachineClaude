@@ -9,14 +9,17 @@
   BanbanMode.setUp(); // メニューの背景に、高い床に積んだ景品を出せるようにしておく
 
   const MODES = { auto: AutoMode, classic: ClassicMode, button: ButtonMode, three: ThreeClawMode, ring: RingMode, shovel: ShovelMode, banban: BanbanMode };
-  // メニューの上から順。数字キーの 1〜7 もこの順
+  // 7 つのゲーム。メニューの上から順
   const MODE_KEYS = ['auto', 'classic', 'button', 'three', 'ring', 'shovel', 'banban'];
+  // メニューに並ぶもの。7 つのゲームの下に、そのどれかを選ぶランダムがある。数字キーの 1〜8 もこの順
+  const MENU_KEYS = MODE_KEYS.concat('random');
 
   const menu = document.getElementById('menu');
-  const menuButtons = Array.from(menu.querySelectorAll('[data-mode]'));   // 7 つのゲーム
+  const menuButtons = Array.from(menu.querySelectorAll('[data-mode]'));   // 7 つのゲームとランダム
   const levelButtons = Array.from(menu.querySelectorAll('.level-tab'));  // かんたん・ふつう・むずかしい
   const scoreLabels = Array.from(menu.querySelectorAll('[data-score-for]'));
   const playBar = document.getElementById('play-bar'); // メニューへ・並べ直す のボタン
+  const nextRandomButton = document.getElementById('next-random'); // ランダムで遊び終わったときの「次のランダム」
   const controls = {
     auto: document.getElementById('controls-auto'),
     classic: document.getElementById('controls-classic'),
@@ -43,6 +46,8 @@
   let selected = -1;
   let levelKey = Collection.level; // メニューで選んでいる難しさ。前回選んだものから始める
   let lastPlayed = 'auto';  // 最後に遊んだゲーム（メニューの背景に使う）
+  let playingRandom = false; // ランダムで遊んでいるか
+  let lastRandom = null;     // ランダムで最後に選ばれたゲーム
   let hovered = null;       // マウスを乗せているゲーム
   let time = 0;
 
@@ -89,13 +94,45 @@
     selectLevel(levelKey);
   }
 
-  // key は遊び方。難しさは、メニューで選んでいるもの
+  // メニューに書いてあるゲームの名前（「2. クラシック」から番号を除いたもの）。ランダムの画面に出す
+  function modeName(key) {
+    const button = menuButtons.find((b) => b.dataset.mode === key);
+    return button.querySelector('.menu-name').textContent.replace(/^\d+\.\s*/, '');
+  }
+
+  // ランダム：7 つのゲームのどれかを選んで始める。続けて遊んだときに同じゲームが続かないように、
+  // 前回ランダムで選ばれたゲームは選ばない
+  function startRandom() {
+    const choices = MODE_KEYS.filter((k) => k !== lastRandom);
+    const key = choices[Math.floor(Math.random() * choices.length)];
+    lastRandom = key;
+    playingRandom = true;
+    GameSession.randomName = modeName(key);
+    startGame(key);
+    // どのゲームが選ばれたか、最初に大きく知らせる
+    current.session.message = '「' + GameSession.randomName + '」で あそぼう！';
+    current.session.messageTimer = 2.5;
+  }
+
+  // key はメニューで選んだもの（7 つのゲームか、ランダム）
   function startMode(key) {
+    if (key === 'random') {
+      startRandom();
+      return;
+    }
+    playingRandom = false;
+    GameSession.randomName = null;
+    startGame(key);
+  }
+
+  // key は遊び方。難しさは、メニューで選んでいるもの
+  function startGame(key) {
     current = MODES[key];
     lastPlayed = key;
     hovered = null;
     menu.hidden = true;
     playBar.hidden = false;
+    nextRandomButton.hidden = true;
     for (const k of MODE_KEYS) {
       controls[k].hidden = k !== key;
       helps[k].hidden = k !== key;
@@ -140,13 +177,13 @@
     const li = LEVEL_KEYS.indexOf(levelKey);
     if (Input.wasPressed('ArrowLeft') && li > 0) selectLevel(LEVEL_KEYS[li - 1]);
     if (Input.wasPressed('ArrowRight') && li < LEVEL_KEYS.length - 1) selectLevel(LEVEL_KEYS[li + 1]);
-    for (let n = 1; n <= MODE_KEYS.length; n++) {
+    for (let n = 1; n <= MENU_KEYS.length; n++) {
       if (Input.wasPressed('Digit' + n)) {
-        startMode(MODE_KEYS[n - 1]);
+        startMode(MENU_KEYS[n - 1]);
         return;
       }
     }
-    if ((Input.wasPressed('Enter') || Input.wasPressed('Space')) && selected >= 0) startMode(MODE_KEYS[selected]);
+    if ((Input.wasPressed('Enter') || Input.wasPressed('Space')) && selected >= 0) startMode(MENU_KEYS[selected]);
   }
 
   function update(dt) {
@@ -160,15 +197,25 @@
       showMenu();
       return;
     }
+    // ランダムで遊び終わったあとは、N（「次のランダム」）で別のゲームを選び直す。
+    // 「下ろす」などのいつものやり方では、今の景品のまま同じゲームを続けて遊ぶ（GameSession の continueOr）。
+    // 遊んでいる途中に押した N が、終わったときに効いてしまわないように、毎回読んで消しておく
+    const nextPressed = Input.wasPressed('KeyN');
+    if (playingRandom && current.session.gameOver && nextPressed) {
+      startRandom();
+      return;
+    }
     current.update(dt);
+    nextRandomButton.hidden = !(playingRandom && current.session.gameOver);
   }
 
   // メニューの背景に出すゲーム。マウスを乗せているもの → キーボードで選んでいるもの → 最後に遊んだもの の順に決める
   // （どのゲームの筐体かが、選ぶ前からわかるようにするため）
   function previewKey() {
-    if (hovered) return hovered;
-    if (selected >= 0) return MODE_KEYS[selected];
-    return lastPlayed;
+    const key = hovered || (selected >= 0 ? MENU_KEYS[selected] : lastPlayed);
+    // ランダムを選んでいるときは、7 つのゲームの筐体を順番に見せる
+    if (key === 'random') return MODE_KEYS[Math.floor(time / 1.5) % MODE_KEYS.length];
+    return key;
   }
 
   function draw() {

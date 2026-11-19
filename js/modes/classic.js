@@ -28,8 +28,8 @@ const ClassicMode = {
   update(dt) {
     this.time += dt;
     if (Input.wasPressed('KeyR')) this.reset();
-    // 終わったあとは「下ろす」でも、もう一度遊べる
-    if (this.session.gameOver && Input.wasPressed('Space')) this.reset();
+    // 終わったあとは「下ろす」でも、もう一度遊べる（ランダムでは、今の景品のまま続けて遊ぶ）
+    if (this.session.gameOver && Input.wasPressed('Space')) this.session.continueOr(() => this.reset());
 
     Claw.update(dt, Prizes.list);
     const chute = CONFIG.chute;

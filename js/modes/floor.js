@@ -153,8 +153,10 @@ function createFloorMode(options) {
       if (Input.wasPressed('KeyR')) this.reset();
       // もう一度遊ぶボタンの押下は毎回読み捨てる（遊んでいる間の押下が、終了後に残らないようにするため）
       const restart = this.control.restartPressed(this);
+      // ランダムでは、今の景品のまま続けて遊ぶ
       if (this.session.gameOver && restart) {
-        this.reset();
+        this.session.continueOr(() => this.reset());
+        this.claw.timer = 0; // 3 本爪の制限時間を、続けて遊ぶときも最初から数え直す
         return;
       }
       this.updateClaw(dt);

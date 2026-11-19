@@ -205,7 +205,10 @@ const Render = {
     ctx.fillStyle = CONFIG.colors.text;
     ctx.font = '16px sans-serif';
     ctx.globalAlpha = 0.6 + 0.4 * Math.abs(Math.sin(performance.now() / 400));
-    ctx.fillText(restartHint, cx, 410);
+    // 案内が 2 行（ランダムのとき）なら、少し小さくして枠に収める
+    const lines = restartHint.split('\n');
+    if (lines.length > 1) ctx.font = '15px sans-serif';
+    lines.forEach((line, i) => ctx.fillText(line, cx, 410 - (lines.length - 1) * 12 + i * 24));
     ctx.globalAlpha = 1;
   },
 

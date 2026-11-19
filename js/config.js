@@ -281,6 +281,7 @@ const CONFIG = {
   // ゲームの決まり
   game: {
     plays: 10,         // 1 ゲームで遊べる回数
+    randomPlays: 3,    // ランダムで遊ぶときの回数（気軽に遊べるように少なくする）
   },
 
   colors: {
