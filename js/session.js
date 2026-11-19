@@ -28,6 +28,7 @@ GameSession.MESSAGES = {
   ringOff: 'おしい！ リングが はずれちゃった…',
   scoopMiss: 'あれれ… すくえなかった',
   scoopSpill: 'おしい！ こぼれちゃった…',
+  bbThrow: 'ぽーん！ なげちゃった！',
 };
 
 GameSession.prototype.reset = function () {
