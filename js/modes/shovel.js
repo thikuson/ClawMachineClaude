@@ -465,10 +465,10 @@ const ShovelMode = {
       ctx.fillRect(x, box.y - 9, 6, 6);
     }
     // 奥の壁と床（奥ほど暗く）
-    ctx.fillStyle = '#332e57';
+    ctx.fillStyle = c.wall;
     ctx.fillRect(box.x, box.y, box.w, box.h);
     const floorTop = this.proj(0, g.tableY - g.tableR - 40, 0).y;
-    ctx.fillStyle = '#3a3462';
+    ctx.fillStyle = c.shovelFloor;
     ctx.fillRect(box.x, floorTop, box.w, box.y + box.h - floorTop);
 
     this.drawChute(ctx);
@@ -592,12 +592,12 @@ const ShovelMode = {
     const v = g.view;
     // 側面（テーブルの厚み）
     this.tablePath(ctx, g.tableR, -v.tableThick);
-    ctx.fillStyle = '#2a2550';
+    ctx.fillStyle = CONFIG.colors.tableSide;
     ctx.fill();
     this.tablePath(ctx, g.tableR, 0);
-    ctx.fillStyle = '#4a4380';
+    ctx.fillStyle = CONFIG.colors.tableTop;
     ctx.fill();
-    ctx.fillStyle = '#544c8f';
+    ctx.fillStyle = CONFIG.colors.tableStripe;
     for (let i = 0; i < 8; i++) {
       const a0 = this.tableAngle + i * Math.PI / 4;
       ctx.beginPath();

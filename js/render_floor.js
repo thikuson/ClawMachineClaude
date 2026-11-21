@@ -73,7 +73,7 @@ const FloorRender = {
     }
 
     // ケースの中（奥の壁を少し明るくして奥行きを出す）
-    ctx.fillStyle = '#332e57';
+    ctx.fillStyle = c.wall;
     ctx.fillRect(box.x, box.y, box.w, box.h);
     const backLeft = this.project(0, u.worldD, 0);
     const backRight = this.project(u.worldW, u.worldD, 0);
@@ -106,7 +106,7 @@ const FloorRender = {
     // 床の手前の厚み
     const fl = this.project(0, 0, 0);
     const fr = this.project(u.worldW, 0, 0);
-    ctx.fillStyle = '#463d73';
+    ctx.fillStyle = c.floorEdge;
     ctx.fillRect(fl.x, fl.y, fr.x - fl.x, box.y + box.h - fl.y);
 
     // 取り出し口（左手前の穴）

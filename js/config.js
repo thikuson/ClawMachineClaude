@@ -325,6 +325,12 @@ const CONFIG = {
     floor: '#5a4f8c',
     chute: '#1a1730',
     chuteEdge: '#f2c94c',
+    wall: '#332e57',        // 奥行きのある筐体（3 本爪・2 ボタン・おまかせ・ショベル）の奥の壁
+    floorEdge: '#463d73',   // 奥行きのある筐体の、床の手前の厚み
+    shovelFloor: '#3a3462', // ショベルの床
+    tableSide: '#2a2550',   // ショベルの回るテーブルの側面
+    tableTop: '#4a4380',    // ショベルの回るテーブルの上の面
+    tableStripe: '#544c8f', // ショベルの回るテーブルの模様
     cable: '#c9c4e8',
     claw: '#d9d6f0',
     clawDark: '#8f89b8',
@@ -362,10 +368,25 @@ const GENRES = [
 //   フリー：全部のゲームを自由に、コインいらずで遊ぶ
 //   チャレンジ：銀コインを使って遊び、景品と一緒に金コインを集める
 //   ステップ：金コインを使って、「おまかせ」から順にクリアしていく。クリアすると次のゲームが遊べるようになる。難しさごとに別々に記録する
+// machine は、そのモードで遊ぶときの筐体の色（CONFIG.colors の一部を置きかえる）。
+// どのモードで遊んでいるかが一目でわかるように、外枠・ガラス・床・取り出し口などの色をモードごとに変える。
+// アームやひもの色は、どのモードでも同じにする
 const PLAY_MODES = [
-  { key: 'free',      name: 'フリー' },
-  { key: 'challenge', name: 'チャレンジ' },
-  { key: 'step',      name: 'ステップ' },
+  // フリー：ピンクの枠に紫のガラス（もとからの色）
+  { key: 'free', name: 'フリー', machine: {
+    background: '#2b2745', frame: '#e85d8a', glass: '#3d3866', floor: '#5a4f8c', chute: '#1a1730', chuteEdge: '#f2c94c',
+    wall: '#332e57', floorEdge: '#463d73', shovelFloor: '#3a3462', tableSide: '#2a2550', tableTop: '#4a4380', tableStripe: '#544c8f',
+  } },
+  // チャレンジ：金コインをかせぐモードなので、金色の枠にえんじ色のガラス
+  { key: 'challenge', name: 'チャレンジ', machine: {
+    background: '#2e1f22', frame: '#d4952a', glass: '#4a2c35', floor: '#74404c', chute: '#1e1013', chuteEdge: '#ff8a5a',
+    wall: '#3a2229', floorEdge: '#5a3340', shovelFloor: '#43282f', tableSide: '#2e1a1f', tableTop: '#5a3540', tableStripe: '#673d4a',
+  } },
+  // ステップ：1 本道を進んでいくモードなので、水色の枠に青緑のガラス
+  { key: 'step', name: 'ステップ', machine: {
+    background: '#1c2f38', frame: '#3fc1c9', glass: '#284650', floor: '#3c6a72', chute: '#0f1d22', chuteEdge: '#f2c94c',
+    wall: '#1f3a42', floorEdge: '#30565e', shovelFloor: '#22424a', tableSide: '#172f36', tableTop: '#2f5a63', tableStripe: '#376770',
+  } },
 ];
 
 // 景品を売ったときの銀コイン

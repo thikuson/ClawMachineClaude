@@ -81,6 +81,8 @@
       b.setAttribute('aria-selected', on ? 'true' : 'false');
     });
     menu.dataset.playMode = key;
+    // 筐体の色を、モードの色にする（config.js の PLAY_MODES の machine）
+    Object.assign(CONFIG.colors, PLAY_MODES.find((m) => m.key === key).machine);
     rebuildMenu();
   }
 
