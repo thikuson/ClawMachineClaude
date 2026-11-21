@@ -65,7 +65,7 @@ const BanbanMode = {
     for (let tries = 0; tries < 20; tries++) {
       // 同じ種類が何個あってもよい（ぎゅうぎゅうに詰めるため）。レア景品は、出るときだけ 1 個
       const normalTypes = [];
-      PRIZE_SPRITES.forEach((s, i) => { if (!s.rare) normalTypes.push(i); });
+      PRIZE_SPRITES.forEach((s, i) => { if (!s.rare && !s.secret) normalTypes.push(i); });
       const types = [];
       for (let i = 0; i < g.prizeCount; i++) types.push(normalTypes[Math.floor(Math.random() * normalTypes.length)]);
       if (Math.random() < CONFIG.prize.rareChance) types[0] = PRIZE_SPRITES.findIndex((s) => s.rare);

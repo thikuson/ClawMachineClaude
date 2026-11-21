@@ -1,4 +1,12 @@
 // ゲーム全体で使う設定値をまとめる
+
+// 試しに遊ぶためのデバッグモード（一時的なもの）。アドレスの後ろに ?debug を付けて開くとオンになる
+// （例：index.html?debug）。オンのときは、いつもの記録を読み込んだうえで、ステップの全部の台（ぬしの台も）が
+// 最初から遊べて、金コインも使わない。銀コインと金コインは 999 枚から始まる。
+// デバッグ中に遊んだ結果（コイン・図鑑・ステップ）は保存しないので、?debug を外して開けば、いつもの記録のまま
+const DEBUG = (() => {
+  try { return new URLSearchParams(location.search).has('debug'); } catch (e) { return false; }
+})();
 const CONFIG = {
   width: 480,   // キャンバスの幅
   height: 640,  // キャンバスの高さ
@@ -284,6 +292,32 @@ const CONFIG = {
     randomPlays: 3,    // ランダムで遊ぶときの回数（気軽に遊べるように少なくする）
   },
 
+  // 銀コインと金コイン（js/collection.js の持ち物。全部のモードで共通）
+  //   フリー：コインいらずで遊べる。取った景品は図鑑に入る
+  //   図鑑：2 こ目からの景品を押すと、1 こ売って銀コインになる（1 こは図鑑用に残る）
+  //   チャレンジ：1 回下ろすごとに銀コイン 1 枚。景品を取ると、景品のほかに金コインももらえる
+  //   ステップ：1 ゲーム（10 回）遊ぶのに金コインがいる
+  coins: {
+    startSilver: 10,     // 最初に持っている銀コイン（最初は売る景品がないので、チャレンジを試せるように少し持たせる）
+    silverPerPoint: 0.1, // 売ったときの銀コイン ＝ 景品の点数（sprites.js の points）× これ（四捨五入、1 枚以上）
+    challengeCost: 1,    // チャレンジで 1 回下ろすのに使う銀コイン
+    goldPerPoint: 1 / 30, // チャレンジで景品を取ったときの金コインの基本 ＝ 点数 × これ（四捨五入、1 枚以上）
+    goldLevelRate: { easy: 1, normal: 2, hard: 3 }, // 難しさの倍率（むずかしいほど多くもらえる）
+    // ゲームの倍率は、GAMES の difficulty（★ の数）をそのまま使う（取りにくいゲームほど多くもらえる）
+    stepCost: 3,         // ステップで 1 ゲーム遊ぶのに使う金コイン（GAMES の stepCost があれば、そちらを使う）
+  },
+
+  // ぬしの台（js/modes/boss.js）。ステップの最後に出る、大きな「ぬし」を何回もアームで叩いて倒す台
+  boss: {
+    r: 62,             // ぬしの大きさ（半径）
+    hp: 100,           // ぬしの体力
+    damage: 26,        // 真ん中に当てたときに減らせる体力（端に当てるほど少なくなる）
+    push: 30,          // 当てたときに、取り出し口の方へ押し戻す距離
+    // 難しさごとの、減らせる体力の倍率と、ぬしが左右に動く速さ（px/秒）
+    damageRate: { easy: 1.5, normal: 1.2, hard: 1 },
+    wanderSpeed: { easy: 0, normal: 30, hard: 55 },
+  },
+
   colors: {
     background: '#2b2745',
     frame: '#e85d8a',
@@ -297,3 +331,52 @@ const CONFIG = {
     text: '#f4f1ff',
   },
 };
+
+// メニューに並べるゲームの一覧。メニューはこの一覧から自動で作る（js/menu.js）
+// ゲームを増やすときは、ここに 1 行足す（遊び方の処理は js/main.js の MODES にも足す）
+//   genre：メニューで、どの見出しの下に並べるか（GENRES の key）
+//   difficulty：むずかしさの目安（★ の数、1〜3）。チャレンジでもらえる金コインの倍率にもなる
+//   unlockOrder：ステップで何番目に遊べるようになるか（null はステップに出さない）
+//   clearGets：ステップで、景品をいくつ取ったらクリアか（ゲームごとに取りやすさが違うので、別々に決める）
+//   stepOnly：ステップだけに出す（フリー・チャレンジ・ランダムには出さない）。stepCost：ステップで 1 ゲームに使う金コイン
+const GAMES = [
+  { key: 'auto',    name: 'おまかせ',   desc: '自動で動くアームを下ろすだけ', genre: 'arm',   difficulty: 1, unlockOrder: 1, clearGets: 3 },
+  { key: 'classic', name: 'クラシック', desc: '← → で動かして下ろす', genre: 'arm',   difficulty: 1, unlockOrder: 2, clearGets: 3 },
+  { key: 'button',  name: '2ボタン',    desc: '① で右、② で奥へ動かす', genre: 'arm',   difficulty: 2, unlockOrder: 3, clearGets: 3 },
+  { key: 'three',   name: '3本爪',      desc: '十字キーで自由に動かす', genre: 'arm',   difficulty: 2, unlockOrder: 4, clearGets: 2 },
+  { key: 'shovel',  name: 'ショベル',   desc: '回る台の景品をすくう', genre: 'trick', difficulty: 1, unlockOrder: 5, clearGets: 3 },
+  { key: 'ring',    name: 'リング',     desc: 'リングをフックにかける', genre: 'trick', difficulty: 1, unlockOrder: 6, clearGets: 3 },
+  { key: 'banban',  name: 'バンバン',   desc: '揺れる爪で弾き落とす', genre: 'trick', difficulty: 1, unlockOrder: 7, clearGets: 3 },
+  { key: 'boss',    name: 'ぬしの台',   desc: 'おおきな ぬしを たおせ！', genre: 'boss', difficulty: 3, unlockOrder: 8, clearGets: 1, stepOnly: true, stepCost: 10 },
+  { key: 'random',  name: 'ランダム',   desc: 'どれかを3回だけお手軽に', genre: 'extra', difficulty: 0, unlockOrder: null },
+];
+
+// メニューの見出し。この順に上から並べる
+const GENRES = [
+  { key: 'arm',   name: 'アームで つかむ' },
+  { key: 'trick', name: 'しかけで おとす' },
+  { key: 'extra', name: 'おたのしみ' },
+];
+
+// メニューの一番上のタブ（遊び方の決まり）
+//   フリー：全部のゲームを自由に、コインいらずで遊ぶ
+//   チャレンジ：銀コインを使って遊び、景品と一緒に金コインを集める
+//   ステップ：金コインを使って、「おまかせ」から順にクリアしていく。クリアすると次のゲームが遊べるようになる。難しさごとに別々に記録する
+const PLAY_MODES = [
+  { key: 'free',      name: 'フリー' },
+  { key: 'challenge', name: 'チャレンジ' },
+  { key: 'step',      name: 'ステップ' },
+];
+
+// 景品を売ったときの銀コイン
+function prizeSilver(sprite) {
+  return Math.max(1, Math.round(sprite.points * CONFIG.coins.silverPerPoint));
+}
+
+// チャレンジで景品を取ったときの金コイン。景品・ゲーム・難しさで変わる
+function prizeGold(sprite, gameKey, levelKey) {
+  const c = CONFIG.coins;
+  const game = GAMES.find((g) => g.key === gameKey);
+  const base = Math.max(1, Math.round(sprite.points * c.goldPerPoint));
+  return base * Math.max(1, game ? game.difficulty : 1) * c.goldLevelRate[levelKey];
+}

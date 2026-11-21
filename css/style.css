@@ -121,6 +121,74 @@ body {
 
 .zukan-item.unknown .zukan-name { opacity: 0.6; }
 
+/* ひみつの景品（ぬしの台で手に入る）。見つける前から、特別な枠だとわかるようにする */
+.zukan-item.secret { background: #4a2a3f; box-shadow: inset 0 0 0 2px #ff7a5a; }
+.zukan-item.secret .zukan-info { color: #ffb39e; }
+
+/* 図鑑がコンプリートしたとき */
+.zukan.complete { box-shadow: 0 0 0 3px #ffd23f, 0 0 24px rgba(255, 210, 63, 0.5); }
+.zukan.complete #zukan-progress { color: #ffd23f; font-weight: bold; opacity: 1; }
+
+/* 図鑑の上の、持っている銀コインと「まとめて うる」ボタン */
+.zukan-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.zukan-silver { font-size: 1.05rem; font-weight: bold; color: #e3e6f0; }
+
+.sell-all {
+  padding: 6px 12px;
+  border: 1px solid #8f89b8;
+  border-radius: 8px;
+  background: #3d3866;
+  color: #f4f1ff;
+  font-size: 0.85rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.sell-all:hover:not(:disabled) { background: #4d4780; }
+.sell-all:disabled { cursor: default; opacity: 0.45; font-weight: normal; }
+
+/* 売ったときに、景品の上に浮かび上がる「+3」 */
+.zukan-item { position: relative; }
+.zukan-pop {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-weight: bold;
+  color: #ffe066;
+  text-shadow: 0 1px 2px #000;
+  pointer-events: none;
+  animation: zukan-pop 0.7s ease-out forwards;
+}
+
+@keyframes zukan-pop {
+  from { opacity: 1; transform: translate(-50%, 0); }
+  to { opacity: 0; transform: translate(-50%, -24px); }
+}
+
+.zukan-icon-box { display: block; height: 48px; }
+
+/* 図鑑の説明（押すと売れること） */
+.zukan-hint { margin: -4px 0 10px; font-size: 0.75rem; opacity: 0.75; }
+
+/* 売り値。2 こ以上持っている景品だけに出す（高さはどの景品もそろえる） */
+.zukan-sell { min-height: 1.2em; font-size: 0.72rem; font-weight: bold; color: #e3e6f0; }
+
+/* 押すと売れる景品 */
+.zukan-item.sellable { cursor: pointer; box-shadow: inset 0 0 0 2px #8f89b8; }
+.zukan-item.sellable.rare { box-shadow: inset 0 0 0 2px #ffd23f; }
+.zukan-item.sellable:hover { background: #4d4780; }
+.zukan-item.sellable.pressing { transform: scale(0.96); background: #4d4780; }
+/* すばやく 2 回押したときに、画面が拡大されないようにする */
+.zukan-item { touch-action: manipulation; }
+
 /* キャンバスとメニューを重ねるための入れ物 */
 .screen { position: relative; max-width: 480px; margin: 0 auto; }
 
@@ -132,27 +200,111 @@ body {
   inset: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  /* 上ぞろえ。上の余白は js/main.js の rebuildMenu が、フリーのときに真ん中に来るように決める
+     （モードを切り替えても、タブや難しさのボタンの位置が動かないようにするため） */
+  justify-content: flex-start;
   align-items: center;
   gap: 6px;
   padding: 12px;
   border-radius: 12px;
-  background: rgba(26, 23, 48, 0.85);
+  background: rgba(26, 23, 48, 0.88);
 }
 
-.menu-title { margin: 0 0 2px; font-size: 1.3rem; font-weight: bold; color: #ffe066; }
+/* 画面が低くても、メニューの中身が縮んで位置がずれないようにする */
+.menu > * { flex-shrink: 0; }
 
-/* 名前とハイスコアを 1 行目に左右に並べ、説明を 2 行目に置く（遊び方が 8 つあるので、縦に詰めて画面に収める） */
+/* メニューの文字の行の高さを決めておく。決めないと、🪙 🔒 ✔ などの絵文字があるときだけ
+   絵文字のフォントに合わせて行が高くなり、モードを切り替えたときに 1px ほど上下に動いて見える */
+.menu, .menu button { line-height: 1.35; }
+
+/* 一番上の、モード（フリー・チャレンジ・ステップ）のタブ */
+.mode-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: 100%;
+  max-width: 420px;
+  border-bottom: 2px solid #5a4f8c;
+}
+
+.mode-tab {
+  padding: 7px 4px;
+  border: none;
+  border-bottom: 4px solid transparent;
+  margin-bottom: -2px;
+  background: transparent;
+  color: #f4f1ff;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.mode-tab:hover { opacity: 0.85; }
+
+.mode-tab.selected { opacity: 1; color: #ffe066; border-bottom-color: #ffe066; }
+
+/* 選んでいるモードの説明。チャレンジではコインの数、ステップでは進み具合を右に出す */
+.menu-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin: 0;
+  white-space: nowrap; /* 2 行にならないようにして、モードを切り替えても下のボタンの位置をそろえる */
+  height: 1.6em;       /* 🪙 などの絵文字で行の高さが変わらないように、高さを決めておく */
+  overflow: hidden;
+  font-size: 0.85rem;
+}
+
+.menu-info-value { font-weight: bold; color: #ffe066; }
+
+/* まだ見た目だけのモードに付ける印 */
+.menu-sample {
+  padding: 0 6px;
+  border: 1px solid #ffb84d;
+  border-radius: 6px;
+  color: #ffb84d;
+  font-size: 0.7rem;
+}
+
+.menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  max-width: 420px;
+}
+
+/* ジャンルの見出し */
+.menu-genre {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: #c9c4e8;
+  text-align: left;
+}
+
+.menu-genre::before { content: "▍"; color: #e85d8a; }
+
+/* ゲームのボタンは 2 列に並べる */
+.menu-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: 1fr; /* 鍵のかかったボタンも、ほかと同じ高さにそろえる */
+  gap: 5px;
+}
+
+/* 1 行目に名前と★、2 行目に説明、3 行目にハイスコア */
 .menu-item {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: baseline;
-  column-gap: 10px;
-  row-gap: 2px;
-  width: min(340px, 100%);
-  padding: 5px 14px;
+  column-gap: 6px;
+  row-gap: 1px;
+  padding: 5px 9px;
   border: 3px solid #5a4f8c;
-  border-radius: 12px;
+  border-radius: 10px;
   background: #2b2745;
   color: #f4f1ff;
   text-align: left;
@@ -161,13 +313,67 @@ body {
 
 .menu-item.selected, .menu-item:hover { border-color: #ffe066; background: #3d3866; }
 
-.menu-name { font-size: 1.1rem; font-weight: bold; }
+.menu-name { font-size: 1rem; font-weight: bold; white-space: nowrap; }
 
-.menu-desc { grid-column: 1 / -1; grid-row: 2; font-size: 0.8rem; opacity: 0.85; }
+/* キーボードの数字キーの番号 */
+.menu-num {
+  display: inline-block;
+  min-width: 1.3em;
+  margin-right: 5px;
+  border-radius: 5px;
+  background: #5a4f8c;
+  font-size: 0.75rem;
+  text-align: center;
+  vertical-align: 0.1em;
+}
 
-.menu-score { grid-column: 2; grid-row: 1; font-size: 0.8rem; color: #ffe066; white-space: nowrap; }
+.menu-stars { font-size: 0.7rem; color: #ffb84d; letter-spacing: -0.05em; }
 
-.menu-hint { margin: 4px 0 0; font-size: 0.8rem; opacity: 0.7; }
+.menu-desc { grid-column: 1 / -1; font-size: 0.72rem; line-height: 1.3; opacity: 0.8; }
+
+.menu-note { grid-column: 1 / -1; font-size: 0.72rem; color: #ffe066; }
+
+/* ステップの最後の、ぬしの台。ほかのボタンと違う色にして、最後の目標だとわかるようにする */
+.menu[data-play-mode] .menu-item.boss:not(.locked) { border-color: #ff7a5a; background: #4a2a3f; }
+.menu-item.boss .menu-name { color: #ffb39e; }
+
+/* コインが足りなくて押せないボタン */
+.menu-item.poor { cursor: default; opacity: 0.45; }
+.menu[data-play-mode] .menu-item.poor:hover { background: #2b2745; }
+
+/* コインが足りないことを知らせる文字 */
+.menu-warn { color: #ff7aa8; font-weight: bold; }
+
+/* メニューの一番上に出す、持っている銀コインと金コイン */
+.menu-wallet {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  width: 100%;
+  max-width: 420px;
+  margin: 0;
+  height: 1.5em;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.menu-wallet b { font-size: 1.05rem; }
+.menu-wallet .silver b { color: #e3e6f0; }
+.menu-wallet .gold b { color: #ffd23f; }
+
+/* ステップ：クリアしたもの・次に遊ぶもの・まだ遊べないもの */
+.menu-item.cleared { opacity: 0.75; }
+.menu-item.cleared .menu-name { color: #9cf07a; }
+.menu[data-play-mode] .menu-item.next { border-color: #ffe066; animation: menu-next 1.2s ease-in-out infinite alternate; }
+.menu-item.locked { cursor: default; opacity: 0.45; border-style: dashed; }
+.menu[data-play-mode] .menu-item.locked, .menu[data-play-mode] .menu-item.locked:hover { border-color: #5a4f8c; background: #2b2745; }
+
+@keyframes menu-next {
+  from { box-shadow: 0 0 0 rgba(255, 224, 102, 0); }
+  to { box-shadow: 0 0 12px rgba(255, 224, 102, 0.8); }
+}
+
+.menu-hint { margin: 4px 0 0; font-size: 0.75rem; opacity: 0.7; }
 
 /* 2 ボタンモードの大きなボタン */
 .controls .big {
@@ -221,7 +427,7 @@ body {
 .dpad .right { grid-column: 3; grid-row: 2; }
 .dpad .down { grid-column: 2; grid-row: 3; }
 
-/* メニュー：上に難しさの切り替え（3 つ）、下に 4 つのゲーム */
+/* メニュー：モードのタブの下に、難しさの切り替え（3 つ） */
 .level-tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -231,10 +437,10 @@ body {
 }
 
 .level-tab {
-  padding: 8px 4px;
-  border: 3px solid transparent;
+  padding: 4px 4px;
+  border: 2px solid transparent;
   border-radius: 10px;
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: bold;
   cursor: pointer;
   opacity: 0.55;
@@ -248,14 +454,6 @@ body {
 
 .level-tab.hard { background: #5a3a4f; color: #ffc4d6; }
 
-.menu-list {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  width: 100%;
-}
-
 /* ゲームのボタンの枠は、選んでいる難しさの色にする */
 .menu[data-level="easy"] .menu-item { border-color: #4f7a4a; }
 .menu[data-level="easy"] .menu-item.selected,
@@ -268,18 +466,20 @@ body {
 .menu[data-level="hard"] .menu-item:hover { border-color: #ff7aa8; }
 
 /* スマホなど幅のせまい画面では、メニューが画面に収まるように詰める。
-   遊び方が 8 つあり、説明まで出すと画面からはみ出すので、説明は省いて名前とハイスコアの 1 行だけにする
-   （キーボードの説明はスマホでは使わないので隠す） */
+   説明まで出すと画面からはみ出すので、説明は省いて名前・★・ハイスコアだけにする
+   （キーボードの説明と数字キーの番号はスマホでは使わないので隠す） */
 @media (max-width: 520px) {
-  .menu { padding: 8px; gap: 6px; }
-  .menu-title { margin: 0; font-size: 1.05rem; }
-  .menu-hint { display: none; }
-  .level-tab { padding: 6px 2px; font-size: 0.9rem; border-width: 2px; }
-  .menu-list { gap: 6px; }
-  .menu-item { padding: 6px 12px; border-width: 2px; }
-  .menu-name { font-size: 1rem; }
-  .menu-desc { display: none; }
-  .menu-score { font-size: 0.75rem; }
+  .menu { padding: 6px 8px; gap: 4px; }
+  .menu-hint, .menu-desc, .menu-num { display: none; }
+  .mode-tab { padding: 4px 2px; font-size: 0.9rem; }
+  .level-tab { padding: 3px 2px; font-size: 0.8rem; }
+  .menu-info { font-size: 0.72rem; }
+  .menu-genre { margin-top: 2px; font-size: 0.72rem; }
+  .menu-grid { gap: 4px; }
+  .menu-item { padding: 3px 8px; border-width: 2px; }
+  .menu-name { font-size: 0.9rem; }
+  .menu-note { font-size: 0.68rem; }
+  .menu-wallet { font-size: 0.8rem; height: 1.4em; }
   /* 上のボタンが 3 つ並んでも 1 行に収まるように、キーボードのキーの案内は省く */
   .play-bar .key-hint { display: none; }
   .back { padding: 6px 10px; }
@@ -287,11 +487,9 @@ body {
 
 /* さらにせまい画面（幅 360px 以下）では、もう少し詰める */
 @media (max-width: 360px) {
-  .menu { gap: 4px; }
-  .menu-title { font-size: 0.95rem; }
-  .menu-list { gap: 4px; }
-  .menu-item { padding: 5px 10px; }
-  .menu-name { font-size: 0.95rem; }
+  .menu-info .menu-sample { display: none; }
+  .menu-name { font-size: 0.85rem; }
+  .menu-stars { display: none; }
   .play-bar { gap: 6px; }
   .back { padding: 6px 8px; font-size: 0.8rem; white-space: nowrap; }
 }

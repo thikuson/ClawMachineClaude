@@ -147,21 +147,20 @@ const Render = {
       img.width * 3, img.height * 3);
   },
 
-  // 上のスコア・残り回数・ハイスコアと、下のメッセージ
+  // 上の取った数・残り回数・持っているコインと、下のメッセージ
   drawHud(hud) {
     const ctx = this.ctx;
     ctx.fillStyle = CONFIG.colors.text;
     ctx.font = 'bold 18px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('スコア：' + hud.score, 24, 32);
+    ctx.fillText(hud.left, 24, 32);
     ctx.textAlign = 'center';
-    // 残り回数は、少なくなったら色を変えて目立たせる
-    ctx.fillStyle = hud.playsLeft <= 2 ? '#ff7aa8' : CONFIG.colors.text;
-    ctx.fillText('のこり ' + hud.playsLeft + ' 回', CONFIG.width / 2, 32);
+    ctx.fillStyle = hud.warn ? '#ff7aa8' : CONFIG.colors.text;
+    ctx.fillText(hud.center, CONFIG.width / 2 + 10, 32);
     ctx.fillStyle = CONFIG.colors.text;
     ctx.textAlign = 'right';
     ctx.font = '15px sans-serif';
-    ctx.fillText('ハイスコア：' + hud.highScore, CONFIG.width - 24, 32);
+    ctx.fillText(hud.right, CONFIG.width - 24, 32);
 
     this.drawText(hud.message, CONFIG.width / 2, CONFIG.height - 52);
     ctx.font = '14px sans-serif';
@@ -172,8 +171,8 @@ const Render = {
     ctx.globalAlpha = 1;
   },
 
-  // ゲーム終了の画面
-  drawGameOver(result, highScore, restartHint) {
+  // ゲーム終了の画面。lines は真ん中に出す結果（取った数・もらったコインなど）
+  drawGameOver(result, lines, restartHint) {
     const ctx = this.ctx;
     const cx = CONFIG.width / 2;
     ctx.fillStyle = 'rgba(26, 23, 48, 0.82)';
@@ -188,27 +187,21 @@ const Render = {
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ffe066';
     ctx.font = 'bold 30px sans-serif';
-    ctx.fillText(result.allClear ? 'ぜんぶ ゲット！' : 'ゲーム しゅうりょう', cx, 228);
+    ctx.fillText(result.title || (result.allClear ? 'ぜんぶ ゲット！' : 'ゲーム しゅうりょう'), cx, 228);
 
     ctx.fillStyle = CONFIG.colors.text;
-    ctx.font = 'bold 22px sans-serif';
-    ctx.fillText('スコア：' + result.score + ' 点', cx, 285);
-    ctx.font = '18px sans-serif';
-    ctx.fillText('ハイスコア：' + highScore + ' 点', cx, 320);
-
-    if (result.isRecord) {
-      ctx.fillStyle = '#ff7aa8';
-      ctx.font = 'bold 22px sans-serif';
-      ctx.fillText('しんきろく！', cx, 360);
-    }
+    lines.forEach((line, i) => {
+      ctx.font = i === 0 ? 'bold 22px sans-serif' : '18px sans-serif';
+      ctx.fillText(line, cx, 285 + i * 34);
+    });
 
     ctx.fillStyle = CONFIG.colors.text;
     ctx.font = '16px sans-serif';
     ctx.globalAlpha = 0.6 + 0.4 * Math.abs(Math.sin(performance.now() / 400));
     // 案内が 2 行（ランダムのとき）なら、少し小さくして枠に収める
-    const lines = restartHint.split('\n');
-    if (lines.length > 1) ctx.font = '15px sans-serif';
-    lines.forEach((line, i) => ctx.fillText(line, cx, 410 - (lines.length - 1) * 12 + i * 24));
+    const hints = restartHint.split('\n');
+    if (hints.length > 1) ctx.font = '15px sans-serif';
+    hints.forEach((line, i) => ctx.fillText(line, cx, 410 - (hints.length - 1) * 12 + i * 24));
     ctx.globalAlpha = 1;
   },
 

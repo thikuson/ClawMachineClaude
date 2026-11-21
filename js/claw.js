@@ -14,7 +14,10 @@ const Claw = {
   autoMove: false,  // true なら、待機中に左右へ自動で往復する（おまかせモード）
   autoDir: 1,       // 自動で動く向き（1 で右、-1 で左）
   canDrop: () => true, // 下ろしてよいか（プレイ回数が残っているか。main.js で設定）
-  onResult: null, // 出来事（drop / grab / miss / slip）を伝える関数（main.js で設定）
+  onResult: null, // 出来事（drop / grab / miss / slip / hit）を伝える関数（main.js で設定）
+  // つかむ代わりに「当たった」として扱うときの関数（ぬしの台。つかめないほど大きいので、当てて体力を減らす）。
+  // offset は当たった位置の、景品の中心からのずれ（0 で真ん中、1 で端）。ほかの台では null
+  onHit: null,
 
   reset() {
     const c = this.cfg;
@@ -77,7 +80,10 @@ const Claw = {
       }
 
       case 'close': {
-        const target = this.findGripTarget(prizes);
+        // ぬしの台では、爪の間に入らないほど大きいので、アームの真下にあれば当たったことにする
+        const target = this.onHit
+          ? prizes.find((p) => Math.abs(p.x - this.headX()) < p.r + 10 && this.tipY() >= p.y - p.r) || null
+          : this.findGripTarget(prizes);
         // 景品があれば、その大きさに合わせて爪が止まる
         this.stopOpenness = target
           ? Math.max(0, (target.r * 0.75 - c.tipClosed) / (c.tipOpen - c.tipClosed))
@@ -154,6 +160,15 @@ const Claw = {
 
   // つかめるかどうかを決める。中心に近いほど成功しやすく、落ちにくい
   tryGrab(target) {
+    if (this.onHit) {
+      if (target) {
+        this.onHit(target, Math.abs(target.x - this.headX()) / target.r);
+        this.report('hit');
+      } else {
+        this.report('miss');
+      }
+      return;
+    }
     if (!target) {
       this.report('miss');
       return;

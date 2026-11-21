@@ -40,7 +40,7 @@ const Prizes = {
     this.list = [];
     // 種類がかたよらないように、順番に割り当ててから混ぜる
     const normalTypes = [];
-    PRIZE_SPRITES.forEach((s, i) => { if (!s.rare) normalTypes.push(i); });
+    PRIZE_SPRITES.forEach((s, i) => { if (!s.rare && !s.secret) normalTypes.push(i); });
     // 景品の種類が置く数より多いので、毎回ちがう組み合わせになるよう混ぜてから選ぶ
     normalTypes.sort(() => Math.random() - 0.5);
     const types = [];

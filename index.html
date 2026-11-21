@@ -6,7 +6,7 @@
   <title>クレーンゲーム</title>
   <!-- css と js の後ろの ?v= は版の印。スマホのブラウザが古い css・js を覚えたまま新しい index.html と
        組み合わせて表示が崩れることがあるので、内容を変えて公開するときはこの印を全部書き換える -->
-  <link rel="stylesheet" href="css/style.css?v=20261119b">
+  <link rel="stylesheet" href="css/style.css?v=20261121b">
 </head>
 <body>
   <main class="app">
@@ -26,57 +26,25 @@
 
       <!-- メニュー画面。キャンバスの上に重ねて表示する -->
       <div id="menu" class="menu">
-        <p class="menu-title">あそびかたを えらんでね</p>
-        <!-- 難しさは全部のゲームで共通。先に選んでから、下の 4 つのゲームのどれかを押す -->
+        <!-- 持っている銀コインと金コイン。全部のモードで共通なので、いつも出しておく -->
+        <p id="menu-wallet" class="menu-wallet"></p>
+        <!-- 遊び方の決まり（フリー・チャレンジ・ステップ）。前回選んだものを覚えておく -->
+        <div class="mode-tabs" role="tablist" aria-label="モード">
+          <button type="button" class="mode-tab" data-play-mode="free" role="tab">フリー</button>
+          <button type="button" class="mode-tab" data-play-mode="challenge" role="tab">チャレンジ</button>
+          <button type="button" class="mode-tab" data-play-mode="step" role="tab">ステップ</button>
+        </div>
+        <!-- 難しさは全部のゲームで共通。先に選んでから、下のゲームのどれかを押す -->
         <div class="level-tabs" role="radiogroup" aria-label="難しさ">
           <button type="button" class="level-tab easy" data-level="easy" role="radio">かんたん</button>
           <button type="button" class="level-tab normal" data-level="normal" role="radio">ふつう</button>
           <button type="button" class="level-tab hard" data-level="hard" role="radio">むずかしい</button>
         </div>
-        <div class="menu-list">
-          <button type="button" class="menu-item" data-mode="auto">
-            <span class="menu-name">1. おまかせ</span>
-            <span class="menu-desc">自動で動くアームを、スペースで下ろすだけ</span>
-            <span class="menu-score">ハイスコア：<span data-score-for="auto">0</span></span>
-          </button>
-          <button type="button" class="menu-item" data-mode="classic">
-            <span class="menu-name">2. クラシック</span>
-            <span class="menu-desc">← → で動かして、スペースで下ろす</span>
-            <span class="menu-score">ハイスコア：<span data-score-for="classic">0</span></span>
-          </button>
-          <button type="button" class="menu-item" data-mode="button">
-            <span class="menu-name">3. 2ボタン</span>
-            <span class="menu-desc">① で右へ、② で奥へ。離すと下りる</span>
-            <span class="menu-score">ハイスコア：<span data-score-for="button">0</span></span>
-          </button>
-          <button type="button" class="menu-item" data-mode="three">
-            <span class="menu-name">4. 3本爪</span>
-            <span class="menu-desc">十字キーで自由に動かす。大きな景品が3つ</span>
-            <span class="menu-score">ハイスコア：<span data-score-for="three">0</span></span>
-          </button>
-          <button type="button" class="menu-item" data-mode="ring">
-            <span class="menu-name">5. リング</span>
-            <span class="menu-desc">リングをフックにかけて、景品を全部落とす</span>
-            <span class="menu-score">ハイスコア：<span data-score-for="ring">0</span></span>
-          </button>
-          <button type="button" class="menu-item" data-mode="shovel">
-            <span class="menu-name">6. ショベル</span>
-            <span class="menu-desc">回るテーブルの景品を、ショベルですくって運ぶ</span>
-            <span class="menu-score">ハイスコア：<span data-score-for="shovel">0</span></span>
-          </button>
-          <button type="button" class="menu-item" data-mode="banban">
-            <span class="menu-name">7. バンバン</span>
-            <span class="menu-desc">ぎゅうぎゅうの景品を、揺れる3本爪で弾き落とす</span>
-            <span class="menu-score">ハイスコア：<span data-score-for="banban">0</span></span>
-          </button>
-          <!-- 上の 7 つのどれかを選んで、3 回だけ遊ぶ -->
-          <button type="button" class="menu-item" data-mode="random">
-            <span class="menu-name">8. ランダム</span>
-            <span class="menu-desc">どれかのゲームを、3回だけお手軽に</span>
-            <span class="menu-score">ハイスコア：<span data-score-for="random">0</span></span>
-          </button>
-        </div>
-        <p class="menu-hint">← → で難しさ、↑ ↓ で遊び方を選んで Enter（1〜8 キーでも始まる）</p>
+        <!-- 選んでいるモードの説明（チャレンジではコインの数、ステップでは進み具合） -->
+        <p id="menu-info" class="menu-info"></p>
+        <!-- ゲームのボタンは js/menu.js が config.js の GAMES から作る -->
+        <div id="menu-list" class="menu-list"></div>
+        <p class="menu-hint">Tab：モード　← →：難しさ　↑ ↓ と Enter か 数字キー：ゲーム</p>
       </div>
     </div>
 
@@ -111,6 +79,13 @@
       <button type="button" data-key="ArrowRight" aria-label="右へ移動">→</button>
     </div>
 
+    <!-- ぬしの台の操作ボタン（クラシックと同じ） -->
+    <div id="controls-boss" class="controls" hidden>
+      <button type="button" data-key="ArrowLeft" aria-label="左へ移動">←</button>
+      <button type="button" data-key="Space" class="drop">下ろす</button>
+      <button type="button" data-key="ArrowRight" aria-label="右へ移動">→</button>
+    </div>
+
     <!-- 2 ボタンモードの操作ボタン -->
     <div id="controls-button" class="controls" hidden>
       <button type="button" data-key="ArrowRight" class="big" aria-label="ボタン1：右へ移動">①<br>→</button>
@@ -130,12 +105,19 @@
 
     <section class="zukan" aria-label="獲得一覧">
       <h2>けいひん ずかん <span id="zukan-progress"></span></h2>
+      <!-- 2 こ以上持っている景品は、押すと 1 こ売って銀コインになる（1 こは図鑑用に残る）。押したままだと続けて売る。
+           売るときに今の銀コインが見えるように、図鑑の上にも出す -->
+      <div class="zukan-bar">
+        <span id="zukan-silver" class="zukan-silver"></span>
+        <button type="button" id="sell-all" class="sell-all"></button>
+      </div>
+      <p class="zukan-hint">ダブりは おすと 1こ うれる・おしたままで つづけて うれる</p>
       <ul id="zukan-list" class="zukan-list"></ul>
-      <!-- 押すと確認のメッセージを出してから、図鑑だけを最初の状態に戻す（ハイスコアは残す） -->
+      <!-- 押すと確認のメッセージを出してから、コインと図鑑を最初の状態に戻す（ステップの進み具合は残す） -->
       <div class="reset-buttons">
-        <button type="button" id="zukan-reset" class="zukan-reset">ずかんを リセット</button>
-        <!-- ハイスコアも、確認のメッセージを出してから全メニュー分を消す（図鑑は残す） -->
-        <button type="button" id="score-reset" class="zukan-reset">ハイスコアを リセット</button>
+        <button type="button" id="all-reset" class="zukan-reset">コインと ずかんを リセット</button>
+        <!-- ステップのクリアの記録（全部の難しさ）を消す。確認のメッセージを出してから消す -->
+        <button type="button" id="step-reset" class="zukan-reset">ステップを リセット</button>
       </div>
     </section>
     <p id="help-auto" class="help" hidden>キーボード：アームは自動で左右に動く。スペースか Enter で下ろす、R でリセット、M で効果音の切り替え</p>
@@ -144,31 +126,34 @@
     <p id="help-ring" class="help" hidden>キーボード：← → で移動、スペースか Enter で下ろす。リングはひもで揺れながら下ります。フックの先の下にもぐったリングを引き上げると、先が輪をくぐって引っかかり、台が傾いて景品が全部取り出し口へ。R でリセット、M で効果音の切り替え</p>
     <p id="help-shovel" class="help" hidden>キーボード：スペースか Enter でショベルを下ろす。ショベルは「⊃」の形に動いて毎回同じ場所に下り、テーブルの手前を少しだけ左へ引いて景品をすくい、手前の取り出し口へ運ぶ。R でリセット、M で効果音の切り替え</p>
     <p id="help-banban" class="help" hidden>キーボード：← → で移動、スペースか Enter で下ろす。アームは大きく揺れながら下り、つかんだ景品を投げたり、当たった景品を弾いたりする。真ん中の取り出し口に落ちた景品がゲット。R でリセット、M で効果音の切り替え</p>
+    <p id="help-boss" class="help" hidden>キーボード：← → で移動、スペースか Enter で下ろす。ぬしは大きすぎてつかめないので、アームを当てて体力を減らす。真ん中に当てるほど大きく減り、0 にすると取り出し口へ転がり落ちる。R でリセット、M で効果音の切り替え</p>
     <p id="help-button" class="help" hidden>キーボード：→（または 1）が ①、↑（または 2）が ②。R でリセット、M で効果音の切り替え</p>
   </main>
 
   <!-- ES モジュールを使わず、読み込み順で依存関係を解決する（?v= の印は、上の css の説明を参照） -->
-  <script src="js/config.js?v=20261119b"></script>
-  <script src="js/level.js?v=20261119b"></script>
-  <script src="js/sprites.js?v=20261119b"></script>
-  <script src="js/input.js?v=20261119b"></script>
-  <script src="js/prize.js?v=20261119b"></script>
-  <script src="js/swing.js?v=20261119b"></script>
-  <script src="js/claw.js?v=20261119b"></script>
-  <script src="js/effects.js?v=20261119b"></script>
-  <script src="js/sound.js?v=20261119b"></script>
-  <script src="js/collection.js?v=20261119b"></script>
-  <script src="js/render.js?v=20261119b"></script>
-  <script src="js/render_floor.js?v=20261119b"></script>
-  <script src="js/session.js?v=20261119b"></script>
-  <script src="js/modes/classic.js?v=20261119b"></script>
-  <script src="js/modes/auto.js?v=20261119b"></script>
-  <script src="js/modes/floor.js?v=20261119b"></script>
-  <script src="js/modes/button.js?v=20261119b"></script>
-  <script src="js/modes/three_claw.js?v=20261119b"></script>
-  <script src="js/modes/ring.js?v=20261119b"></script>
-  <script src="js/modes/shovel.js?v=20261119b"></script>
-  <script src="js/modes/banban.js?v=20261119b"></script>
-  <script src="js/main.js?v=20261119b"></script>
+  <script src="js/config.js?v=20261121b"></script>
+  <script src="js/level.js?v=20261121b"></script>
+  <script src="js/sprites.js?v=20261121b"></script>
+  <script src="js/input.js?v=20261121b"></script>
+  <script src="js/prize.js?v=20261121b"></script>
+  <script src="js/swing.js?v=20261121b"></script>
+  <script src="js/claw.js?v=20261121b"></script>
+  <script src="js/effects.js?v=20261121b"></script>
+  <script src="js/sound.js?v=20261121b"></script>
+  <script src="js/collection.js?v=20261121b"></script>
+  <script src="js/render.js?v=20261121b"></script>
+  <script src="js/render_floor.js?v=20261121b"></script>
+  <script src="js/session.js?v=20261121b"></script>
+  <script src="js/menu.js?v=20261121b"></script>
+  <script src="js/modes/classic.js?v=20261121b"></script>
+  <script src="js/modes/auto.js?v=20261121b"></script>
+  <script src="js/modes/floor.js?v=20261121b"></script>
+  <script src="js/modes/button.js?v=20261121b"></script>
+  <script src="js/modes/three_claw.js?v=20261121b"></script>
+  <script src="js/modes/ring.js?v=20261121b"></script>
+  <script src="js/modes/shovel.js?v=20261121b"></script>
+  <script src="js/modes/banban.js?v=20261121b"></script>
+  <script src="js/modes/boss.js?v=20261121b"></script>
+  <script src="js/main.js?v=20261121b"></script>
 </body>
 </html>

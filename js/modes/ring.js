@@ -72,7 +72,7 @@ const RingMode = {
     const g = CONFIG.ring;
     const p = CONFIG.prize;
     const normalTypes = [];
-    PRIZE_SPRITES.forEach((s, i) => { if (!s.rare) normalTypes.push(i); });
+    PRIZE_SPRITES.forEach((s, i) => { if (!s.rare && !s.secret) normalTypes.push(i); });
     normalTypes.sort(() => Math.random() - 0.5);
     const types = normalTypes.slice(0, g.prizeCount);
     if (Math.random() < p.rareChance) types[0] = PRIZE_SPRITES.findIndex((s) => s.rare);

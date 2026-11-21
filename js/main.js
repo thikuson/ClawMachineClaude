@@ -8,16 +8,20 @@
   ShovelMode.setUp(); // メニューの背景に、回るテーブルと景品を出せるようにしておく
   BanbanMode.setUp(); // メニューの背景に、高い床に積んだ景品を出せるようにしておく
 
-  const MODES = { auto: AutoMode, classic: ClassicMode, button: ButtonMode, three: ThreeClawMode, ring: RingMode, shovel: ShovelMode, banban: BanbanMode };
-  // 7 つのゲーム。メニューの上から順
-  const MODE_KEYS = ['auto', 'classic', 'button', 'three', 'ring', 'shovel', 'banban'];
-  // メニューに並ぶもの。7 つのゲームの下に、そのどれかを選ぶランダムがある。数字キーの 1〜8 もこの順
-  const MENU_KEYS = MODE_KEYS.concat('random');
+  const MODES = { auto: AutoMode, classic: ClassicMode, button: ButtonMode, three: ThreeClawMode, ring: RingMode, shovel: ShovelMode, banban: BanbanMode, boss: BossMode };
+  // 遊べるゲーム（ランダムは、このどれかを選ぶので含めない）。並び順は config.js の GAMES
+  const MODE_KEYS = GAMES.map((g) => g.key).filter((k) => MODES[k]);
+  // ランダムで選ぶゲーム（ステップだけのぬしの台は入れない）
+  const RANDOM_KEYS = GAMES.filter((g) => MODES[g.key] && !g.stepOnly).map((g) => g.key);
 
   const menu = document.getElementById('menu');
-  const menuButtons = Array.from(menu.querySelectorAll('[data-mode]'));   // 7 つのゲームとランダム
+  const menuList = document.getElementById('menu-list');
+  const menuInfo = document.getElementById('menu-info');
+  const modeTabs = Array.from(menu.querySelectorAll('.mode-tab'));     // フリー・チャレンジ・ステップ
   const levelButtons = Array.from(menu.querySelectorAll('.level-tab'));  // かんたん・ふつう・むずかしい
-  const scoreLabels = Array.from(menu.querySelectorAll('[data-score-for]'));
+  const wallet = document.getElementById('menu-wallet'); // メニューの持ち物（銀コイン・金コイン）
+  // ゲームのボタン（押せるものだけ、上から順）。モードのタブを切り替えるたびに作り直す
+  let menuButtons = [];
   const playBar = document.getElementById('play-bar'); // メニューへ・並べ直す のボタン
   const nextRandomButton = document.getElementById('next-random'); // ランダムで遊び終わったときの「次のランダム」
   const controls = {
@@ -28,6 +32,7 @@
     ring: document.getElementById('controls-ring'),
     shovel: document.getElementById('controls-shovel'),
     banban: document.getElementById('controls-banban'),
+    boss: document.getElementById('controls-boss'),
   };
   const helps = {
     auto: document.getElementById('help-auto'),
@@ -37,6 +42,7 @@
     ring: document.getElementById('help-ring'),
     shovel: document.getElementById('help-shovel'),
     banban: document.getElementById('help-banban'),
+    boss: document.getElementById('help-boss'),
   };
   const zukanProgress = document.getElementById('zukan-progress');
 
@@ -45,6 +51,7 @@
   // メニューを開いた直後は選ばず、↑ ↓ を押したときだけ枠を光らせる（前に遊んだゲームが選ばれたままに見えないように）
   let selected = -1;
   let levelKey = Collection.level; // メニューで選んでいる難しさ。前回選んだものから始める
+  let playMode = Collection.playMode; // メニューの一番上のタブ。前回選んだものから始める
   let lastPlayed = 'auto';  // 最後に遊んだゲーム（メニューの背景に使う）
   let playingRandom = false; // ランダムで遊んでいるか
   let lastRandom = null;     // ランダムで最後に選ばれたゲーム
@@ -52,12 +59,51 @@
   let time = 0;
 
   function updateZukanProgress() {
-    zukanProgress.textContent = Collection.completedCount() + ' / ' + PRIZE_SPRITES.length + ' しゅるい';
+    const done = Collection.completedCount();
+    const complete = done === PRIZE_SPRITES.length;
+    zukanProgress.textContent = done + ' / ' + PRIZE_SPRITES.length + ' しゅるい' + (complete ? '　🏆 コンプリート！' : '');
+    // 全部そろったら、図鑑の枠を金色にする
+    zukanProgress.closest('.zukan').classList.toggle('complete', complete);
   }
 
   function selectMenu(index) {
     selected = index < 0 ? -1 : index % menuButtons.length;
     menuButtons.forEach((b, i) => b.classList.toggle('selected', i === selected));
+  }
+
+  // 一番上のタブ（フリー・チャレンジ・ステップ）を選ぶ
+  function selectPlayMode(key) {
+    playMode = key;
+    Collection.setPlayMode(key);
+    modeTabs.forEach((b) => {
+      const on = b.dataset.playMode === key;
+      b.classList.toggle('selected', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    menu.dataset.playMode = key;
+    rebuildMenu();
+  }
+
+  // ゲームのボタンを、選んでいるモードと難しさで作り直す。
+  // タブを切り替えてもタブや難しさのボタンの位置がずれないように、メニューは上ぞろえにして、
+  // 一番項目の多いフリーのときに上下の真ん中に来る位置を、どのモードでも使う
+  function rebuildMenu() {
+    Menu.build(menuList, menuInfo, 'free', levelKey);
+    const shown = Array.from(menu.children).filter((el) => el.offsetParent !== null);
+    const top = shown[0].getBoundingClientRect().top;
+    const bottom = Math.max(...shown.map((el) => el.getBoundingClientRect().bottom));
+    const space = menu.clientHeight - (bottom - top);
+    menu.style.paddingTop = Math.max(6, Math.floor(space / 2)) + 'px';
+    menuButtons = Menu.build(menuList, menuInfo, playMode, levelKey);
+    wallet.innerHTML = (DEBUG ? '<span class="menu-warn">デバッグ（きろくは のこらない）</span>' : '') + '<span class="silver">🥈 ぎん <b>' + Collection.silver + '</b></span>' +
+      '<span class="gold">🥇 きん <b>' + Collection.gold + '</b></span>';
+    menuButtons.forEach((b) => {
+      b.addEventListener('click', () => startMode(b.dataset.mode));
+      b.addEventListener('pointerenter', () => { hovered = b.dataset.mode; });
+      b.addEventListener('pointerleave', () => { if (hovered === b.dataset.mode) hovered = null; });
+    });
+    hovered = null;
+    selectMenu(-1);
   }
 
   // 難しさを選ぶ。ボタンの見た目・説明・ハイスコアの表示を、選んだ難しさに合わせる
@@ -70,15 +116,7 @@
     });
     menu.dataset.level = key; // ゲームのボタンの枠の色を、難しさに合わせて変える（css）
     Collection.setLevel(key);
-    updateMenuScores();
-  }
-
-  // ゲームそれぞれに、選んでいる難しさでのハイスコアを表示する
-  function updateMenuScores() {
-    for (const label of scoreLabels) {
-      const scoreKey = GameSession.scoreKey(label.dataset.scoreFor, levelKey);
-      label.textContent = Collection.highScores[scoreKey] || 0;
-    }
+    rebuildMenu(); // ステップは難しさごとに遊べるゲームが違い、チャレンジの金コインも難しさで変わるので作り直す
   }
 
   function showMenu() {
@@ -90,20 +128,19 @@
       helps[key].hidden = true;
     }
     Input.clearPressed();
-    selectMenu(-1);
+    selectPlayMode(playMode);
     selectLevel(levelKey);
   }
 
-  // メニューに書いてあるゲームの名前（「2. クラシック」から番号を除いたもの）。ランダムの画面に出す
+  // ゲームの名前。ランダムの画面に出す
   function modeName(key) {
-    const button = menuButtons.find((b) => b.dataset.mode === key);
-    return button.querySelector('.menu-name').textContent.replace(/^\d+\.\s*/, '');
+    return GAMES.find((g) => g.key === key).name;
   }
 
-  // ランダム：7 つのゲームのどれかを選んで始める。続けて遊んだときに同じゲームが続かないように、
+  // ランダム：全部のゲームのどれかを選んで始める。続けて遊んだときに同じゲームが続かないように、
   // 前回ランダムで選ばれたゲームは選ばない
   function startRandom() {
-    const choices = MODE_KEYS.filter((k) => k !== lastRandom);
+    const choices = RANDOM_KEYS.filter((k) => k !== lastRandom);
     const key = choices[Math.floor(Math.random() * choices.length)];
     lastRandom = key;
     playingRandom = true;
@@ -114,8 +151,9 @@
     current.session.messageTimer = 2.5;
   }
 
-  // key はメニューで選んだもの（7 つのゲームか、ランダム）
+  // key はメニューで選んだもの（ゲームのどれかか、ランダム）
   function startMode(key) {
+    GameSession.playMode = playMode;
     if (key === 'random') {
       startRandom();
       return;
@@ -139,29 +177,42 @@
     }
     Input.clearPressed();
     Level.set(levelKey);
+    Claw.onHit = null; // アームを「当てる」使い方にするのは、ぬしの台だけ（ぬしの台の start で設定する）
     current.start();
   }
 
-  menuButtons.forEach((b) => {
-    b.addEventListener('click', () => startMode(b.dataset.mode));
-    b.addEventListener('pointerenter', () => { hovered = b.dataset.mode; });
-    b.addEventListener('pointerleave', () => { if (hovered === b.dataset.mode) hovered = null; });
+  modeTabs.forEach((b) => b.addEventListener('click', () => selectPlayMode(b.dataset.playMode)));
+  // 画面の幅が変わると（スマホの向きなど）ボタンの高さが変わるので、高さを測り直す
+  window.addEventListener('resize', () => { if (!current) rebuildMenu(); });
+  // メニューを出している間だけ、Tab キーでモードのタブを順に切り替える（Shift + Tab で逆回り）
+  window.addEventListener('keydown', (e) => {
+    if (current || e.code !== 'Tab') return;
+    e.preventDefault();
+    const i = PLAY_MODES.findIndex((m) => m.key === playMode);
+    const n = PLAY_MODES.length;
+    selectPlayMode(PLAY_MODES[(i + (e.shiftKey ? n - 1 : 1)) % n].key);
   });
   levelButtons.forEach((b) => b.addEventListener('click', () => selectLevel(b.dataset.level)));
   document.getElementById('back-to-menu').addEventListener('click', showMenu);
 
-  // 図鑑のリセット。間違えて押しても消えないように、確認してから消す
-  document.getElementById('zukan-reset').addEventListener('click', () => {
-    if (!window.confirm('けいひんずかんを リセットしますか？\n（あつめた けいひんの きろくが すべて きえます。ハイスコアは のこります）')) return;
-    Collection.resetCounts();
+  // コインと図鑑のリセット。間違えて押しても消えないように、確認してから消す
+  document.getElementById('all-reset').addEventListener('click', () => {
+    if (!window.confirm('コインと ずかんを リセットしますか？\n（あつめた けいひんと コインが さいしょに もどります。ステップの すすみぐあいは のこります）')) return;
+    Collection.resetAll();
   });
 
-  // ハイスコアのリセット。図鑑と同じく、確認してから消す
-  document.getElementById('score-reset').addEventListener('click', () => {
-    if (!window.confirm('ハイスコアを リセットしますか？\n（すべての あそびかたの ハイスコアが 0 に もどります。ずかんは のこります）')) return;
-    Collection.resetHighScores();
-    updateMenuScores();
+  // ダブっている景品を、1 こずつ残してまとめて売る（ボタンに合計の枚数が出ているので、確認せずにすぐ売る）
+  document.getElementById('sell-all').addEventListener('click', () => Collection.sellAllExtras());
+
+  // ステップのリセット。確認してから消す
+  document.getElementById('step-reset').addEventListener('click', () => {
+    if (!window.confirm('ステップの クリアの きろくを リセットしますか？\n（すべての むずかしさで「おまかせ」から やりなおしに なります。コインと ずかんは のこります）')) return;
+    Collection.resetSteps();
   });
+
+  // 図鑑で景品を売ったときなど、持ち物が変わったら、メニューを出しているときはメニューの表示を直す
+  // （コインが増えて、チャレンジやステップが遊べるようになることがあるため）
+  Collection.onChange = () => { if (!current) rebuildMenu(); };
 
   // 最初に何か操作したときに、音を鳴らす準備をする
   const unlockSound = () => Sound.unlock();
@@ -177,13 +228,14 @@
     const li = LEVEL_KEYS.indexOf(levelKey);
     if (Input.wasPressed('ArrowLeft') && li > 0) selectLevel(LEVEL_KEYS[li - 1]);
     if (Input.wasPressed('ArrowRight') && li < LEVEL_KEYS.length - 1) selectLevel(LEVEL_KEYS[li + 1]);
-    for (let n = 1; n <= MENU_KEYS.length; n++) {
-      if (Input.wasPressed('Digit' + n)) {
-        startMode(MENU_KEYS[n - 1]);
+    // 数字キーは、押せるボタンの上からの番号（ボタンの左に書いてある数字）
+    for (let n = 1; n <= 9; n++) {
+      if (Input.wasPressed('Digit' + n) && menuButtons[n - 1]) {
+        startMode(menuButtons[n - 1].dataset.mode);
         return;
       }
     }
-    if ((Input.wasPressed('Enter') || Input.wasPressed('Space')) && selected >= 0) startMode(MENU_KEYS[selected]);
+    if ((Input.wasPressed('Enter') || Input.wasPressed('Space')) && selected >= 0) startMode(menuButtons[selected].dataset.mode);
   }
 
   function update(dt) {
@@ -212,9 +264,9 @@
   // メニューの背景に出すゲーム。マウスを乗せているもの → キーボードで選んでいるもの → 最後に遊んだもの の順に決める
   // （どのゲームの筐体かが、選ぶ前からわかるようにするため）
   function previewKey() {
-    const key = hovered || (selected >= 0 ? MENU_KEYS[selected] : lastPlayed);
-    // ランダムを選んでいるときは、7 つのゲームの筐体を順番に見せる
-    if (key === 'random') return MODE_KEYS[Math.floor(time / 1.5) % MODE_KEYS.length];
+    const key = hovered || (selected >= 0 ? menuButtons[selected].dataset.mode : lastPlayed);
+    // ランダムを選んでいるときは、全部のゲームの筐体を順番に見せる
+    if (key === 'random') return RANDOM_KEYS[Math.floor(time / 1.5) % RANDOM_KEYS.length];
     return key;
   }
 

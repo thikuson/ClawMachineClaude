@@ -96,7 +96,7 @@ function createFloorMode(options) {
       const u = this.layout;
       const p = CONFIG.prize;
       const normalTypes = [];
-      PRIZE_SPRITES.forEach((s, i) => { if (!s.rare) normalTypes.push(i); });
+      PRIZE_SPRITES.forEach((s, i) => { if (!s.rare && !s.secret) normalTypes.push(i); });
       normalTypes.sort(() => Math.random() - 0.5);
       const types = [];
       for (let i = 0; i < options.prizeCount; i++) types.push(normalTypes[i % normalTypes.length]);
