@@ -50,6 +50,34 @@ const Input = {
       btn.addEventListener('pointerleave', release);
       btn.addEventListener('pointercancel', release);
     });
+
+    this.setupFullscreen();
+  },
+
+  // スマホ・タブレットでは、最初に画面をタッチしたときに全画面にする。
+  // 全画面にすると下のナビゲーションバー（ホームボタンなど）が隠れて、ボタンを押すときに指が当たりにくくなる。
+  // パソコン（マウス）では何もしない。全画面にできないブラウザ（iPhone の Safari など）でも、そのまま遊べる。
+  // 一度やめた全画面に勝手に戻らないように、試すのは読み込んでから 1 回だけにする
+  setupFullscreen() {
+    const root = document.documentElement;
+    const request = root.requestFullscreen || root.webkitRequestFullscreen;
+    const isTouchDevice = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    if (!request || !isTouchDevice) return;
+
+    // ブラウザは、タッチの「指を離したとき」でないと全画面にさせてくれないので、pointerup で試す
+    const tryFullscreen = (e) => {
+      if (e.pointerType !== 'touch') return;
+      window.removeEventListener('pointerup', tryFullscreen, true);
+      if (document.fullscreenElement || document.webkitFullscreenElement) return;
+      try {
+        const result = request.call(root, { navigationUI: 'hide' });
+        // 断られても遊ぶのには困らないので、エラーは出さずに無視する
+        if (result && result.catch) result.catch(() => {});
+      } catch (err) {
+        // 古いブラウザで失敗したときも、そのまま遊べるようにする
+      }
+    };
+    window.addEventListener('pointerup', tryFullscreen, true);
   },
 
   // 押し続けているかどうか

@@ -493,3 +493,16 @@ body {
   .play-bar { gap: 6px; }
   .back { padding: 6px 8px; font-size: 0.8rem; white-space: nowrap; }
 }
+
+/* 指で操作する端末（スマホ・タブレット）だけ、画面の上下に余白を足す。
+   画面の一番下に操作ボタンがあると、押すときに指が端末のナビゲーションバー（ホームボタンなど）に
+   当たって、ホーム画面に戻ってしまうことがあるため。ボタンの下に余白を作り、ボタンを画面の端から離す。
+   env(safe-area-inset-*) は端末のバーや切り欠きの高さ（ない端末では 0）。
+   マウスで操作するパソコンには当てはまらないので、見た目は変わらない */
+@media (pointer: coarse) {
+  .app {
+    padding-top: calc(16px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+  .controls { margin-bottom: calc(40px + env(safe-area-inset-bottom, 0px)); }
+}
