@@ -79,3 +79,16 @@ const ThreeClawMode = createFloorMode({
   pointScale: CONFIG.threeClaw.pointScale,
   control: FreeControl,
 });
+
+// ガイドあり：狙っている間、爪の真下の床に赤い十字の印と点線、爪と同じ奥行きの床に赤い光の帯を出す。それ以外は同じ
+const ThreeGuideMode = createFloorMode({
+  key: 'threeGuide',
+  restartHint: 'R か スペースで もういちど',
+  layout: CONFIG.threeClaw,
+  arm: CONFIG.threeClawArm,
+  prizeCount: CONFIG.threeClaw.prizeCount,
+  prizeScale: CONFIG.threeClaw.prizeScale,
+  pointScale: CONFIG.threeClaw.pointScale,
+  control: FreeControl,
+  guide: true,
+});

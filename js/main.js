@@ -5,10 +5,12 @@
   Input.init();
   Collection.init(document.getElementById('zukan-list'));
   RingMode.setUp(); // メニューの背景に、景品を載せた台とリングを出せるようにしておく
+  SweetMode.setUp(); // メニューの背景に、ドームとプッシャーの台を出せるようにしておく
+  Ring2Mode.setUp(); // メニューの背景に、2 段の台を出せるようにしておく
   ShovelMode.setUp(); // メニューの背景に、回るテーブルと景品を出せるようにしておく
   BanbanMode.setUp(); // メニューの背景に、高い床に積んだ景品を出せるようにしておく
 
-  const MODES = { auto: AutoMode, classic: ClassicMode, button: ButtonMode, three: ThreeClawMode, ring: RingMode, shovel: ShovelMode, banban: BanbanMode, boss: BossMode };
+  const MODES = { auto: AutoMode, classic: ClassicMode, button: ButtonMode, buttonGuide: ButtonGuideMode, three: ThreeClawMode, threeGuide: ThreeGuideMode, ring: RingMode, ring2: Ring2Mode, shovel: ShovelMode, sweet: SweetMode, banban: BanbanMode, autobanban: BanbanAutoMode, boss: BossMode };
   // 遊べるゲーム（ランダムは、このどれかを選ぶので含めない）。並び順は config.js の GAMES
   const MODE_KEYS = GAMES.map((g) => g.key).filter((k) => MODES[k]);
   // ランダムで選ぶゲーム（ステップだけのぬしの台は入れない）
@@ -28,20 +30,30 @@
     auto: document.getElementById('controls-auto'),
     classic: document.getElementById('controls-classic'),
     button: document.getElementById('controls-button'),
+    buttonGuide: document.getElementById('controls-button'), // ガイドありも、操作ボタンは同じ
     three: document.getElementById('controls-three'),
+    threeGuide: document.getElementById('controls-three'),
     ring: document.getElementById('controls-ring'),
+    ring2: document.getElementById('controls-ring2'),
     shovel: document.getElementById('controls-shovel'),
+    sweet: document.getElementById('controls-sweet'),
     banban: document.getElementById('controls-banban'),
+    autobanban: document.getElementById('controls-autobanban'),
     boss: document.getElementById('controls-boss'),
   };
   const helps = {
     auto: document.getElementById('help-auto'),
     classic: document.getElementById('help-classic'),
     button: document.getElementById('help-button'),
+    buttonGuide: document.getElementById('help-button'),
     three: document.getElementById('help-three'),
+    threeGuide: document.getElementById('help-three'),
     ring: document.getElementById('help-ring'),
+    ring2: document.getElementById('help-ring2'),
     shovel: document.getElementById('help-shovel'),
+    sweet: document.getElementById('help-sweet'),
     banban: document.getElementById('help-banban'),
+    autobanban: document.getElementById('help-autobanban'),
     boss: document.getElementById('help-boss'),
   };
   const zukanProgress = document.getElementById('zukan-progress');
@@ -69,6 +81,8 @@
   function selectMenu(index) {
     selected = index < 0 ? -1 : index % menuButtons.length;
     menuButtons.forEach((b, i) => b.classList.toggle('selected', i === selected));
+    // ゲームのボタンの部分はスクロールするので、キーボードで選んだボタンが隠れていたら見える位置まで動かす
+    if (selected >= 0) menuButtons[selected].scrollIntoView({ block: 'nearest' });
   }
 
   // 一番上のタブ（フリー・チャレンジ・ステップ）を選ぶ
@@ -173,10 +187,13 @@
     menu.hidden = true;
     playBar.hidden = false;
     nextRandomButton.hidden = true;
+    // ガイドありの台は、ふつうの台と同じ操作ボタンを使うので、全部隠してから、遊ぶ台のものだけ出す
     for (const k of MODE_KEYS) {
-      controls[k].hidden = k !== key;
-      helps[k].hidden = k !== key;
+      controls[k].hidden = true;
+      helps[k].hidden = true;
     }
+    controls[key].hidden = false;
+    helps[key].hidden = false;
     Input.clearPressed();
     Level.set(levelKey);
     Claw.onHit = null; // アームを「当てる」使い方にするのは、ぬしの台だけ（ぬしの台の start で設定する）
@@ -208,7 +225,7 @@
 
   // ステップのリセット。確認してから消す
   document.getElementById('step-reset').addEventListener('click', () => {
-    if (!window.confirm('ステップの クリアの きろくを リセットしますか？\n（すべての むずかしさで「おまかせ」から やりなおしに なります。コインと ずかんは のこります）')) return;
+    if (!window.confirm('ステップの クリアの きろくを リセットしますか？\n（すべての むずかしさで さいしょの だんから やりなおしに なります。コインと ずかんは のこります）')) return;
     Collection.resetSteps();
   });
 
@@ -278,16 +295,22 @@
       return;
     }
     const key = previewKey();
-    if (key === 'banban') {
+    if (key === 'banban' || key === 'autobanban') {
       // 高い床に景品を積んだ、横から見た筐体
       BanbanMode.drawScene(time);
     } else if (key === 'shovel') {
       // 斜め上から見た、回るテーブルの筐体
       ShovelMode.drawScene(time);
+    } else if (key === 'sweet') {
+      // 横から見た、ドームのターンテーブルとプッシャーの台
+      SweetMode.drawScene(time);
+    } else if (key === 'ring2') {
+      // 2 段のリングの筐体
+      Ring2Mode.drawScene(time);
     } else if (key === 'ring') {
       // リングの筐体（台と景品とリング）
       RingMode.drawScene(time);
-    } else if (key === 'button' || key === 'three') {
+    } else if (key === 'button' || key === 'three' || key === 'buttonGuide' || key === 'threeGuide') {
       // 斜め前から見た筐体。2 ボタンと 3 本爪では取り出し口の大きさが違うので、そのゲームの配置で描く
       FloorRender.layout = MODES[key].layout;
       FloorRender.drawMachine(Render.ctx, time);

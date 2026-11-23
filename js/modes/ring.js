@@ -124,7 +124,7 @@ const RingMode = {
   // アームがいちばん下まで下りたときの本体の高さ。ぶら下がったリングが、床にちょうど着くところ
   lowestY() {
     const g = CONFIG.ring;
-    return CONFIG.floorY - this.ringR() - g.ringWire - this.stringReach() - g.armLength + 2;
+    return this.ringFloorY() - this.ringR() - g.ringWire - this.stringReach() - g.armLength + 2;
   },
 
   // アームの初期位置（引き上げたあとに戻る位置）。景品は台から取り出し口へ流れ込むので、取り出し口の上までは行かず、
@@ -179,7 +179,7 @@ const RingMode = {
   // フックのいまの位置での、点 i の画面上の座標
   hookPoint(i) {
     const p = this.hook.pts[i];
-    return { x: this.target.x + p.x, y: CONFIG.floorY - this.target.lifted + p.y };
+    return { x: this.target.x + p.x, y: this.hookBaseY() - this.target.lifted + p.y };
   },
 
   // フックの先（端）の位置
@@ -200,14 +200,24 @@ const RingMode = {
 
   // フックのいちばん上の高さ。引き上げられると上がる
   hookTopY() {
-    return CONFIG.floorY - this.hookHeight() - this.target.lifted;
+    return this.hookBaseY() - this.hookHeight() - this.target.lifted;
+  },
+
+  // フックが立っている床の高さ（y 座標）。2 だんのリング（ring2.js）では、上の段の高さになる
+  hookBaseY() {
+    return CONFIG.floorY;
+  },
+
+  // リングが下りられる、いちばん下の高さ（y 座標）
+  ringFloorY() {
+    return CONFIG.floorY;
   },
 
   // 点 (x, y) にいちばん近い、フックの針金の上の点。dist はその距離、s は根元からの長さ
   closestOnHook(x, y) {
     const pts = this.hook.pts;
     const ox = this.target.x;
-    const oy = CONFIG.floorY - this.target.lifted;
+    const oy = this.hookBaseY() - this.target.lifted;
     let best = null;
     for (let i = 1; i < pts.length; i++) {
       const ax = ox + pts[i - 1].x, ay = oy + pts[i - 1].y;
@@ -394,7 +404,7 @@ const RingMode = {
     const ring = this.ring;
     const outer = this.ringR() + g.ringWire;
     const box = CONFIG.case;
-    const floor = CONFIG.floorY - outer;
+    const floor = this.ringFloorY() - outer;
     if (ring.y > floor) {
       ring.y = floor;
       ring.py = floor; // 床に当たったら縦の速さはなくなる
@@ -714,7 +724,8 @@ const RingMode = {
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(p.x, p.y);
-    ctx.lineTo(ring.x + dx / d * this.ringR(), ring.y + dy / d * this.ringR());
+    const edge = this.ringEdge(dx / d, dy / d);
+    ctx.lineTo(edge.x, edge.y);
     ctx.stroke();
 
     // リング（まん丸の輪）
@@ -734,6 +745,12 @@ const RingMode = {
     const img = Render.clawHeadImage;
     ctx.drawImage(img, Math.round(a.x - img.width * 1.5), Math.round(headTop - 2), img.width * 3, img.height * 3);
     ctx.restore();
+  },
+
+  // リングの輪の、中心から向き (ux, uy) の方にあるふちの点（ひもをつなぐところ）
+  ringEdge(ux, uy) {
+    const R = this.ringR();
+    return { x: this.ring.x + ux * R, y: this.ring.y + uy * R };
   },
 
   // リングの輪。金色の針金に、左上に光った筋を入れる

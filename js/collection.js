@@ -128,28 +128,38 @@ const Collection = {
     this.changed();
   },
 
-  // ステップの並び順（おまかせから順に。config.js の unlockOrder）
-  stepOrder() {
-    return GAMES.filter((g) => g.unlockOrder).sort((a, b) => a.unlockOrder - b.unlockOrder);
+  // ステップの段（config.js の STEP_STAGES）。それぞれの段に入るゲームの一覧を付けて返す
+  stepStages() {
+    return STEP_STAGES.map((st) => ({ ...st, games: GAMES.filter((g) => g.genre === st.key && g.key !== 'random') }));
   },
 
-  // ステップで、その難しさのそのゲームが遊べるか。最初のゲームと、1 つ前をクリアしたゲームが遊べる
+  // ゲームが何番目の段にあるか（ステップに出ないゲームは -1）
+  stepStageIndex(key) {
+    return this.stepStages().findIndex((st) => st.games.some((g) => g.key === key));
+  },
+
+  // その難しさで、i 番目の段をクリアしたか（段の中のどれか 1 つをクリアしていればよい）
+  isStageCleared(level, i) {
+    const stage = this.stepStages()[i];
+    return !!stage && stage.games.some((g) => this.stepCleared[level].includes(g.key));
+  },
+
+  // ステップで、その難しさのそのゲームが遊べるか。最初の段と、1 つ前の段をクリアした段のゲームが遊べる
   isStepOpen(level, key) {
     if (DEBUG) return true; // デバッグモードでは全部遊べる
-    const order = this.stepOrder();
-    const i = order.findIndex((g) => g.key === key);
-    return i === 0 || (i > 0 && this.stepCleared[level].includes(order[i - 1].key));
+    const i = this.stepStageIndex(key);
+    return i === 0 || (i > 0 && this.isStageCleared(level, i - 1));
   },
 
-  // ステップでゲームをクリアしたときに呼ぶ。新しく次のゲームが遊べるようになったら true を返す
+  // ステップでゲームをクリアしたときに呼ぶ。新しく次の段が遊べるようになったら true を返す
   clearStep(level, key) {
     const list = this.stepCleared[level];
     if (list.includes(key)) return false;
+    const i = this.stepStageIndex(key);
+    const opened = i >= 0 && !this.isStageCleared(level, i) && i < STEP_STAGES.length - 1;
     list.push(key);
     this.changed();
-    const order = this.stepOrder();
-    const i = order.findIndex((g) => g.key === key);
-    return i >= 0 && i < order.length - 1;
+    return opened;
   },
 
   // メニューの一番上のタブを選んだときに呼ぶ

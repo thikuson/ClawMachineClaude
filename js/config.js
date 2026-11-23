@@ -79,6 +79,77 @@ const CONFIG = {
     },
   },
 
+  // リング（2だん）（js/modes/ring2.js）。上の段の左右にフックが 1 本ずつ立ち、下の段の左右に景品を載せた台がある。
+  // 真ん中の下が取り出し口。フックを引き上げると、ひもでつながった下の台の外側が持ち上がり、景品が真ん中へ流れ込む。
+  // リングとフックの大きさ・揺れ・くぐらせ方・難しさは CONFIG.ring と同じものを使う
+  ring2: {
+    shelfY: 290,        // 上の段の上面の y 座標（フックが立ち、リングはここより下へ下りない）
+    shelfInnerL: 190,   // 左の棚の右端（真ん中はあいている）
+    shelfInnerR: 290,   // 右の棚の左端
+    trayY: 452,         // 下の台の上面の y 座標
+    trayLength: 130,    // 下の台の長さ（取り出し口のそばの軸から、外側へ）
+    prizesPerTray: 2,   // 1 つの台に載せる景品の数
+    chute: { x: 200, w: 80 }, // 真ん中の取り出し口の左右の範囲
+    hookLeft: [70, 160],  // 左のフックを立てる範囲（x 座標）。この真ん中に立てる
+    hookRight: [320, 410], // 右のフックを立てる範囲
+    homeX: 240,         // アームの待つ位置（取り出し口の上）
+    armMinX: 60,        // アームが動ける範囲
+    armMaxX: 420,
+    // 上の段からアームの待つ高さまでは、ふつうのリングより引き上げられる距離が短いので、
+    // 少し引き上げただけで台が傾くようにする（ふつうのリングの pullToOpen・maxLift の代わり）
+    pullToOpen: 22,     // フックをこの高さだけ引き上げると、下の台が傾く
+    maxLift: 34,        // フックが上がれる高さ。ここまで上がると、リングがフックから抜ける
+    // 難しさごとの違い（ふつうのリングの CONFIG.ring.levels に上書きする）。
+    // フックは「？」がいろいろな向き（上から見た回り具合）を向き、リングも吊られてくるくる回る。
+    // align は、リングの穴の向きがフックの面にどれだけそろえば先がくぐれるか（0〜1、大きいほど厳しい）。
+    // 引っかかりさえすれば取れるように、引き上げる途中では外れない（slip 0）
+    levels: {
+      easy:   { align: 0.5, slip: 0 },
+      normal: { align: 0.7, slip: 0 },
+      hard:   { align: 0.82, slip: 0 },
+    },
+  },
+
+  // スウィート（スウィートランド系、js/modes/sweet.js）。ショベル（CONFIG.shovel）と同じ斜め上から見た画面で、
+  // 奥のドームの中でテーブルが回り、手前にプッシャーの床がある。ショベルは毎回同じ場所に下りて、景品の山に沈んで少し止まり、
+  // 引き上げる（0 個のことも、何個もすくえることもある）。すくった景品はプッシャーの床へ落とし、押し板に押されて
+  // 手前のふちから取り出し口へ落ちた景品が獲得になる。ここにない値の意味は CONFIG.shovel と同じ
+  sweet: {
+    tableX: 235, tableY: 215, tableR: 130, spin: 0.45, prizeCount: 12, refillBelow: 10,
+    pivotX: 38, pivotY: 290,
+    aimAngle: 0,
+    waitLength: 150,   // 待っているときの、軸からショベルの中心までの長さ
+    landLength: 232,   // 伸ばす長さ（ここで真下へ沈む）
+    swoopTime: 1.4,    // 伸びながら 1/4 円を描いて沈むまでの時間（秒）
+    holdTime: 0.6,     // 沈んだまま止まっている時間
+    curlTime: 1.1,     // 内側へ巻き込みながら引き上げる時間
+    curlBack: 40,      // 巻き込むときに、内側（軸の方）へ引く長さ
+    gatherUntil: 0.2,  // 引き上げの高さがここまでのあいだは、通り道の景品をかき集める（0〜1）
+    chuteAngle: 0.5,   // プッシャーの床の上（景品を落とす所）に来る角度
+    chuteLength: 240,  // プッシャーの床の上に来る長さ
+    carrySpeed: 1.1,
+    dropWait: 6,       // プッシャーの床の上で「おとす」を待つ時間。過ぎると自動で落とす
+    chute: { x: 0, y: 900, w: 0, h: 0 }, // （使わない。取り出し口はプッシャーの床の手前）
+    hubR: 50, ringOut: 100,
+    bucketDepth: 40,
+    view: {
+      centerX: 240, originY: 262, squash: 0.68, backScale: 0.82, tableThick: 14, wallHeight: 22,
+      boomHeight: 190, bucketLow: 2, bucketHigh: 80,
+    },
+    // プッシャー（真上から見た位置）。押し板（上の段）の前の面が pushMin〜pushMax（奥行き y）を pushPeriod 秒で往復し、
+    // 床（下の段）の景品を手前へ押す。上の段の景品は、下がるときに奥の壁（wallY）に止められて、少しずつ下の段へ落ちる。
+    // 床は cx を中心に、奥（backY）で半分の幅 backHalf、手前のふち（frontY）で frontHalf に広がる扇形。
+    // 手前のふちを越えた景品は取り出し口へ落ちてゲット、扇の横から出た景品は取れない。topCount は最初に上の段に置く数
+    pusher: { cx: 240, backHalf: 100, frontHalf: 160, wallY: 352, backY: 398, pushMin: 402, pushMax: 436, pushPeriod: 3, pushH: 16, frontY: 522, packing: 0.92, startCount: 18, topCount: 7 },
+    settleTime: 3, // 最後に落としてから、終わりにするまで待つ時間（押し出されて落ちる景品を待つ）
+    // 難しさごとの違い。bucketWidth はショベルの幅、capacity は一度にすくえる数、spill は持ち上げるときのこぼれやすさ
+    levels: {
+      easy:   { bucketWidth: 72, capacity: 4, spill: 0.35, wobble: 0 },
+      normal: { bucketWidth: 68, capacity: 3, spill: 0.45, wobble: 0 },
+      hard:   { bucketWidth: 62, capacity: 3, spill: 0.6, wobble: 1 },
+    },
+  },
+
   // バンバンモード（台湾式のキャッチャー）。横から見た筐体で、真ん中の取り出し口の左右に高い床があり、景品をぎゅうぎゅうに積む。
   // 3 本爪のアームはケーブルで吊られていて、どの難しさでも下ろすときに大きく揺れる（左右に動かしたときの揺れは、むずかしいだけ）。
   // つかんだ景品は持ち上げる途中で投げることが多く、揺れる爪に当たった景品は弾かれたり転がったりする。床の内側のふちから落ちた景品が獲得になる
@@ -105,6 +176,7 @@ const CONFIG = {
     claw: {
       homeX: 240, homeY: 100, minX: 52, maxX: 428,
       moveSpeed: 200, downSpeed: 240, upSpeed: 170, returnSpeed: 190,
+      autoSpeed: 150, // おまかせバンバンで、アームが自動で左右に往復する速さ（px/秒、ずっと一定）
       armLength: 44, tipClosed: 6, tipOpen: 28, closeTime: 0.4, openTime: 0.3,
     },
     // ケーブルの揺れ。振り子と同じく、ケーブルが長いほどゆっくり揺れる
@@ -342,23 +414,38 @@ const CONFIG = {
 // ゲームを増やすときは、ここに 1 行足す（遊び方の処理は js/main.js の MODES にも足す）
 //   genre：メニューで、どの見出しの下に並べるか（GENRES の key）
 //   difficulty：むずかしさの目安（★ の数、1〜3）。チャレンジでもらえる金コインの倍率にもなる
-//   unlockOrder：ステップで何番目に遊べるようになるか（null はステップに出さない）
-//   clearGets：ステップで、景品をいくつ取ったらクリアか（ゲームごとに取りやすさが違うので、別々に決める）
+//   clearGets：ステップで、景品をいくつ取ったらクリアか（ゲームごとに取りやすさが違うので、別々に決める）。
+//             ステップでは genre ごとの段（STEP_STAGES）に分けて並べ、段の中のどれか 1 つをクリアすると次の段が遊べるようになる
 //   stepOnly：ステップだけに出す（フリー・チャレンジ・ランダムには出さない）。stepCost：ステップで 1 ゲームに使う金コイン
 const GAMES = [
-  { key: 'auto',    name: 'おまかせ',   desc: '自動で動くアームを下ろすだけ', genre: 'arm',   difficulty: 1, unlockOrder: 1, clearGets: 3 },
-  { key: 'classic', name: 'クラシック', desc: '← → で動かして下ろす', genre: 'arm',   difficulty: 1, unlockOrder: 2, clearGets: 3 },
-  { key: 'button',  name: '2ボタン',    desc: '① で右、② で奥へ動かす', genre: 'arm',   difficulty: 2, unlockOrder: 3, clearGets: 3 },
-  { key: 'three',   name: '3本爪',      desc: '十字キーで自由に動かす', genre: 'arm',   difficulty: 2, unlockOrder: 4, clearGets: 2 },
-  { key: 'shovel',  name: 'ショベル',   desc: '回る台の景品をすくう', genre: 'trick', difficulty: 1, unlockOrder: 5, clearGets: 3 },
-  { key: 'ring',    name: 'リング',     desc: 'リングをフックにかける', genre: 'trick', difficulty: 1, unlockOrder: 6, clearGets: 3 },
-  { key: 'banban',  name: 'バンバン',   desc: '揺れる爪で弾き落とす', genre: 'trick', difficulty: 1, unlockOrder: 7, clearGets: 3 },
-  { key: 'boss',    name: 'ぬしの台',   desc: 'おおきな ぬしを たおせ！', genre: 'boss', difficulty: 3, unlockOrder: 8, clearGets: 1, stepOnly: true, stepCost: 10 },
-  { key: 'random',  name: 'ランダム',   desc: 'どれかを3回だけお手軽に', genre: 'extra', difficulty: 0, unlockOrder: null },
+  { key: 'auto',    name: 'おまかせ',   desc: '自動で動くアームを下ろすだけ', genre: 'onetouch',   difficulty: 1, clearGets: 3 },
+  { key: 'classic', name: 'クラシック', desc: '← → で動かして下ろす', genre: 'arm',   difficulty: 1, clearGets: 3 },
+  { key: 'button',  name: '2ボタン',    desc: '① で右、② で奥へ動かす', genre: 'arm',   difficulty: 2, clearGets: 3 },
+  { key: 'three',   name: '3本爪',      desc: '十字キーで自由に動かす', genre: 'arm',   difficulty: 2, clearGets: 2 },
+  { key: 'buttonGuide', name: '2ボタン ガイド', desc: 'ねらいの光つきの 2ボタン', genre: 'arm', difficulty: 1, clearGets: 3 },
+  { key: 'threeGuide',  name: '3本爪 ガイド',  desc: 'ねらいの光つきの 3本爪', genre: 'arm', difficulty: 1, clearGets: 2 },
+  { key: 'shovel',  name: 'ショベル',   desc: '回る台の景品をすくう', genre: 'onetouch', difficulty: 1, clearGets: 3 },
+  { key: 'sweet',   name: 'スウィート', desc: 'まわる台から すくって おしだす', genre: 'onetouch', difficulty: 1, clearGets: 3 },
+  { key: 'autobanban', name: 'おまかせバンバン', desc: '自動で動く揺れる爪を下ろすだけ', genre: 'onetouch', difficulty: 1, clearGets: 3 },
+  { key: 'ring',    name: 'リング',     desc: 'リングをフックにかける', genre: 'trick', difficulty: 1, clearGets: 3 },
+  { key: 'ring2',   name: 'リング2だん', desc: 'うえの フックで したの台を ひく', genre: 'trick', difficulty: 2, clearGets: 2 },
+  { key: 'banban',  name: 'バンバン',   desc: '揺れる爪で弾き落とす', genre: 'trick', difficulty: 1, clearGets: 3 },
+  { key: 'boss',    name: 'ぬしの台',   desc: 'おおきな ぬしを たおせ！', genre: 'boss', difficulty: 3, clearGets: 1, stepOnly: true, stepCost: 10 },
+  { key: 'random',  name: 'ランダム',   desc: 'どれかを3回だけお手軽に', genre: 'extra', difficulty: 0 },
+];
+
+// ステップの段。上から順に進み、段の中のゲームのどれか 1 つをクリアすると、次の段のゲームが遊べるようになる。
+// 段に入るゲームは、GAMES の genre が key と同じもの（ランダムは入れない）
+const STEP_STAGES = [
+  { key: 'onetouch', name: 'ワンタッチ' },
+  { key: 'arm',      name: 'アームで つかむ' },
+  { key: 'trick',    name: 'しかけで おとす' },
+  { key: 'boss',     name: 'さいごの だい' },
 ];
 
 // メニューの見出し。この順に上から並べる
 const GENRES = [
+  { key: 'onetouch', name: 'ワンタッチ' }, // ボタンを 1 回押すだけで遊べるゲーム
   { key: 'arm',   name: 'アームで つかむ' },
   { key: 'trick', name: 'しかけで おとす' },
   { key: 'extra', name: 'おたのしみ' },
@@ -367,7 +454,7 @@ const GENRES = [
 // メニューの一番上のタブ（遊び方の決まり）
 //   フリー：全部のゲームを自由に、コインいらずで遊ぶ
 //   チャレンジ：銀コインを使って遊び、景品と一緒に金コインを集める
-//   ステップ：金コインを使って、「おまかせ」から順にクリアしていく。クリアすると次のゲームが遊べるようになる。難しさごとに別々に記録する
+//   ステップ：金コインを使って、ジャンルの段を順に進む。段の中のどれか 1 つをクリアすると、次の段が遊べるようになる。難しさごとに別々に記録する
 // machine は、そのモードで遊ぶときの筐体の色（CONFIG.colors の一部を置きかえる）。
 // どのモードで遊んでいるかが一目でわかるように、外枠・ガラス・床・取り出し口などの色をモードごとに変える。
 // アームやひもの色は、どのモードでも同じにする

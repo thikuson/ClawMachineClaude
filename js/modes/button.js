@@ -72,3 +72,16 @@ const ButtonMode = createFloorMode({
   pointScale: 1,
   control: ButtonControl,
 });
+
+// ガイドあり：狙っている間、爪の真下の床に赤い十字の印と点線、爪と同じ奥行きの床に赤い光の帯を出す。それ以外は同じ
+const ButtonGuideMode = createFloorMode({
+  key: 'buttonGuide',
+  restartHint: 'R か ① で もういちど',
+  layout: CONFIG.ufo,
+  arm: CONFIG.twoClawArm,
+  prizeCount: CONFIG.prize.count,
+  prizeScale: 1,
+  pointScale: 1,
+  control: ButtonControl,
+  guide: true,
+});

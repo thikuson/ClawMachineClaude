@@ -38,8 +38,13 @@ const FloorRender = {
     // 影は床の上なので、すべての物より先に描く
     for (const p of prizes) this.drawShadow(ctx, p.x, p.z, p.r, p.h);
     this.drawShadow(ctx, mode.headX(), mode.headZ(), mode.arm.tipOpen * 0.5, claw.h - mode.arm.armLength);
+    // ガイドありの台では、狙っている間は、爪の奥行きの床に光の帯を出す（どの列の景品と同じ奥行きかが分かる）
+    const aiming = mode.guide && (mode.control.states.includes(claw.state) || claw.state === 'down');
+    if (aiming) this.drawDepthBand(ctx, mode.headZ(), time);
     items.sort((a, b) => b.z - a.z);
     for (const item of items) item.draw();
+    // 爪の真下の床へ、ねらいの光（点線と十字の印）を出す。景品より手前に描いて、いつも見えるようにする
+    if (aiming) this.drawAimMark(ctx, mode.headX(), mode.headZ(), claw.h - mode.arm.armLength, time);
 
     mode.control.drawPanel(ctx, mode);
   },
@@ -123,6 +128,45 @@ const FloorRender = {
     ctx.font = 'bold 13px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('とりだし口', label.x, label.y + 18);
+  },
+
+  // 爪と同じ奥行き（z）の床に、左右いっぱいの光の帯を描く
+  drawDepthBand(ctx, z, time) {
+    const u = this.layout;
+    const pulse = 0.5 + 0.5 * Math.sin(time * 5);
+    ctx.fillStyle = 'rgba(255, 110, 110, ' + (0.16 + 0.1 * pulse) + ')';
+    this.floorPath(ctx, 0, z - 5, u.worldW, z + 5);
+    ctx.fill();
+    const a = this.project(0, z, 0), b = this.project(u.worldW, z, 0);
+    ctx.strokeStyle = 'rgba(255, 120, 120, 0.55)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  },
+
+  // 爪の先から真下の床までの点線と、床の上の十字の印
+  drawAimMark(ctx, x, z, tipH, time) {
+    const tip = this.project(x, z, Math.max(0, tipH));
+    const m = this.project(x, z, 0);
+    const pulse = 0.6 + 0.4 * Math.sin(time * 6);
+    ctx.strokeStyle = 'rgba(255, 90, 90, 0.75)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 5]);
+    ctx.beginPath();
+    ctx.moveTo(tip.x, tip.y);
+    ctx.lineTo(m.x, m.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = 'rgba(255, 90, 90, ' + (0.55 + 0.4 * pulse) + ')';
+    ctx.beginPath();
+    ctx.ellipse(m.x, m.y, 10 * m.k, 4 * m.k, 0, 0, Math.PI * 2);
+    ctx.moveTo(m.x - 15 * m.k, m.y);
+    ctx.lineTo(m.x + 15 * m.k, m.y);
+    ctx.moveTo(m.x, m.y - 7 * m.k);
+    ctx.lineTo(m.x, m.y + 7 * m.k);
+    ctx.stroke();
   },
 
   // 床に落ちる影。高いところにあるほど薄く小さくする

@@ -40,7 +40,7 @@ const ShovelMode = {
 
   // 景品を並べ直し、アームを初めの位置に戻す。メニューの背景に出すときにも使う
   setUp() {
-    const g = CONFIG.shovel;
+    const g = this.cfg();
     const a = this.arm;
     a.state = 'wait';
     a.angle = g.aimAngle;
@@ -55,13 +55,20 @@ const ShovelMode = {
     this.placePrizes();
   },
 
+  // このゲームの設定。スウィート（sweet.js）は、この仕組みを使って自分の設定を返す
+  spillPopup: true, // こぼれたときに「おしい！」を景品の上に出す
+
+  cfg() {
+    return CONFIG.shovel;
+  },
+
   levelSettings() {
-    return CONFIG.shovel.levels[Level.key] || CONFIG.shovel.levels.normal;
+    return this.cfg().levels[Level.key] || this.cfg().levels.normal;
   },
 
   // テーブルの上に、重ならないように景品を置く
   placePrizes() {
-    const g = CONFIG.shovel;
+    const g = this.cfg();
     const p = CONFIG.prize;
     const normalTypes = [];
     PRIZE_SPRITES.forEach((s, i) => { if (!s.rare && !s.secret) normalTypes.push(i); });
@@ -94,13 +101,13 @@ const ShovelMode = {
 
   // テーブルの上の景品の、画面上の位置
   prizePos(p) {
-    const g = CONFIG.shovel;
+    const g = this.cfg();
     return { x: g.tableX + Math.cos(p.ang) * p.dist, y: g.tableY + Math.sin(p.ang) * p.dist };
   },
 
   // 画面上の位置を、テーブルの上の位置（中心からの距離と角度）にして景品に入れる
   setPrizePos(p, x, y) {
-    const g = CONFIG.shovel;
+    const g = this.cfg();
     const dx = x - g.tableX;
     const dy = y - g.tableY;
     // 景品が回る輪（hubR〜ringOut）の外へは出ない
@@ -110,7 +117,7 @@ const ShovelMode = {
 
   // ショベルの中心の画面上の位置と、アームの向き（軸から外向き：ux, uy、横向き：vx, vy）
   bucketFrame() {
-    const g = CONFIG.shovel;
+    const g = this.cfg();
     const a = this.arm;
     const ux = Math.cos(a.angle);
     const uy = Math.sin(a.angle);
@@ -126,7 +133,7 @@ const ShovelMode = {
       return;
     }
     // テーブルは止まらずに反時計回りに回り続ける（画面は y が下向きなので、角度を減らす向き）
-    const spin = CONFIG.shovel.spin * dt;
+    const spin = this.cfg().spin * dt;
     this.tableAngle -= spin;
     for (const p of this.prizes) {
       p.ang -= spin;
@@ -141,7 +148,7 @@ const ShovelMode = {
   },
 
   updateArm(dt) {
-    const g = CONFIG.shovel;
+    const g = this.cfg();
     const a = this.arm;
     a.timer += dt;
     switch (a.state) {
@@ -230,7 +237,7 @@ const ShovelMode = {
   // アームを target の角度へ回す。着いたら true
   turnToward(target, dt) {
     const a = this.arm;
-    const step = CONFIG.shovel.carrySpeed * dt;
+    const step = this.cfg().carrySpeed * dt;
     const diff = target - a.angle;
     if (Math.abs(diff) <= step) {
       a.angle = target;
@@ -275,7 +282,7 @@ const ShovelMode = {
   // 取り出し口へ落ちていく景品。床（高さ 0）より下は取り出し口の穴の中だけで、十分落ちたら獲得。
   // 穴の外の床に落ちたときは、穴のまわりのくぼみで穴の方へ転がる
   updateDrops(dt) {
-    const g = CONFIG.shovel;
+    const g = this.cfg();
     const c = g.chute;
     const cx = c.x + c.w / 2;
     const cy = c.y + c.h / 2;
@@ -312,7 +319,7 @@ const ShovelMode = {
   // ショベルに入った景品をすくう。ショベルの入り口（軸の側）から中心が入った景品がすくわれ、
   // 入りきらない景品や、ふちにかかっただけの景品は横へ押しのけられる
   scoop() {
-    const g = CONFIG.shovel;
+    const g = this.cfg();
     const lv = this.levelSettings();
     const a = this.arm;
     const f = this.bucketFrame();
@@ -383,8 +390,10 @@ const ShovelMode = {
       this.falling.push({ type: p.type, r: p.r, angle: p.angle, x: pos.x, y: pos.y, h, t: 0 });
       Sound.slip();
       this.session.showMessage('scoopSpill');
-      const at = this.proj(pos.x, pos.y, h);
-      Effects.popup('おしい！', at.x, at.y - 30, '#6fd3ff');
+      if (this.spillPopup) {
+        const at = this.proj(pos.x, pos.y, h);
+        Effects.popup('おしい！', at.x, at.y - 30, '#6fd3ff');
+      }
     }
   },
 
@@ -407,7 +416,7 @@ const ShovelMode = {
 
   // こぼれた景品が落ちる演出。テーブルの上なら、テーブルに戻って一緒に回る。取り出し口の上なら獲得
   updateFalling(dt) {
-    const g = CONFIG.shovel;
+    const g = this.cfg();
     for (const f of this.falling.slice()) {
       f.t += dt;
       if (f.t < 0.35) continue;
@@ -434,8 +443,8 @@ const ShovelMode = {
   // 斜め上から見た画面にするための変換。動きの計算は真上から見た位置（x：左右、y：奥行き）で行い、
   // 描くときだけ、奥行きを縦につぶして上にずらし、高さ h の分だけさらに上に描く。奥にあるものほど少し小さくする
   proj(x, y, h) {
-    const v = CONFIG.shovel.view;
-    const g = CONFIG.shovel;
+    const v = this.cfg().view;
+    const g = this.cfg();
     const t = (y - (g.tableY - g.tableR)) / (g.tableR * 2); // 0 がテーブルのいちばん奥、1 がいちばん手前
     const k = v.backScale + (1 - v.backScale) * Math.max(0, Math.min(1.4, t));
     return { x: v.centerX + (x - v.centerX) * k, y: v.originY + (y - g.tableY) * v.squash - h * k, k };
@@ -443,14 +452,14 @@ const ShovelMode = {
 
   // ショベルの底の、テーブルからの高さ（px）
   bucketHeight() {
-    const v = CONFIG.shovel.view;
+    const v = this.cfg().view;
     return v.bucketLow + (v.bucketHigh - v.bucketLow) * this.arm.height;
   },
 
   // 筐体・テーブル・景品・アームを描く。メニューの背景にも使う
   drawScene(time) {
     const ctx = Render.ctx;
-    const g = CONFIG.shovel;
+    const g = this.cfg();
     const c = CONFIG.colors;
     const box = CONFIG.case;
 
@@ -535,7 +544,7 @@ const ShovelMode = {
 
   // 取り出し口の穴の形の道
   chutePath(ctx) {
-    const ch = CONFIG.shovel.chute;
+    const ch = this.cfg().chute;
     const a = this.proj(ch.x, ch.y, 0);
     const b = this.proj(ch.x + ch.w, ch.y, 0);
     const d = this.proj(ch.x + ch.w, ch.y + ch.h, 0);
@@ -550,7 +559,7 @@ const ShovelMode = {
 
   // 取り出し口（床に開いた穴）
   drawChute(ctx) {
-    const ch = CONFIG.shovel.chute;
+    const ch = this.cfg().chute;
     const c = CONFIG.colors;
     const a = this.proj(ch.x, ch.y, 0);
     const b = this.proj(ch.x + ch.w, ch.y, 0);
@@ -575,7 +584,7 @@ const ShovelMode = {
 
   // テーブルのふち（円）を、斜めから見た形の道にする
   tablePath(ctx, r, h) {
-    const g = CONFIG.shovel;
+    const g = this.cfg();
     ctx.beginPath();
     for (let i = 0; i <= 48; i++) {
       const a = i / 48 * Math.PI * 2;
@@ -588,7 +597,7 @@ const ShovelMode = {
 
   // 回るテーブル。側面と、回っているのがわかる放射状の模様を描く
   drawTable(ctx) {
-    const g = CONFIG.shovel;
+    const g = this.cfg();
     const v = g.view;
     // 側面（テーブルの厚み）
     this.tablePath(ctx, g.tableR, -v.tableThick);
@@ -620,7 +629,7 @@ const ShovelMode = {
 
   // テーブルの真ん中の台（低い円柱）。景品はこの台のまわりの輪の上を回る
   drawHub(ctx) {
-    const g = CONFIG.shovel;
+    const g = this.cfg();
     const r = g.hubR - 20;
     const hh = 16;
     const left = this.proj(g.tableX - r, g.tableY, 0);
@@ -649,7 +658,7 @@ const ShovelMode = {
 
   // ドームの手前側の透明な壁（景品の前に重なる）
   drawDomeFront(ctx) {
-    const g = CONFIG.shovel;
+    const g = this.cfg();
     const v = g.view;
     ctx.fillStyle = 'rgba(190, 210, 255, 0.12)';
     ctx.strokeStyle = 'rgba(210, 225, 255, 0.55)';
@@ -682,13 +691,13 @@ const ShovelMode = {
   drawShadow(ctx, x, y, r, alpha) {
     ctx.fillStyle = 'rgba(0, 0, 0, ' + (0.28 * (alpha === undefined ? 1 : alpha)) + ')';
     ctx.beginPath();
-    ctx.ellipse(x, y, r, r * CONFIG.shovel.view.squash, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, y, r, r * this.cfg().view.squash, 0, 0, Math.PI * 2);
     ctx.fill();
   },
 
   // テーブルの左の柱から高いところを通る腕（吊り棒はショベルと一緒に描く）
   drawBoom(ctx) {
-    const g = CONFIG.shovel;
+    const g = this.cfg();
     const v = g.view;
     const c = CONFIG.colors;
     const f = this.bucketFrame();
@@ -722,7 +731,7 @@ const ShovelMode = {
   // ショベルを横から見たときの大きさと、吊り棒をつなぐ蝶番（ちょうつがい）の画面上の位置。
   // ショベルは蝶番を中心に傾くので、傾けても吊り棒とつながったまま
   bucketShape() {
-    const g = CONFIG.shovel;
+    const g = this.cfg();
     const v = g.view;
     const lv = this.levelSettings();
     const f = this.bucketFrame();
@@ -752,7 +761,7 @@ const ShovelMode = {
 
   // ショベルを横から見た形で描く。入り口は、すくうときに引く向き（腕の柱の側）を向く
   drawBucket(ctx) {
-    const g = CONFIG.shovel;
+    const g = this.cfg();
     const v = g.view;
     const c = CONFIG.colors;
     const a = this.arm;

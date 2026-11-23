@@ -276,6 +276,16 @@ body {
   max-width: 420px;
 }
 
+/* ゲームが増えて画面に収まらないときは、ゲームのボタンの部分だけを上下にスクロールする
+   （モードのタブと難しさのボタンは、いつも上に出しておく） */
+.menu > .menu-list {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 2px 2px;
+}
+
 /* ジャンルの見出し */
 .menu-genre {
   margin: 4px 0 0;

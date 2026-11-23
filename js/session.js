@@ -139,7 +139,7 @@ GameSession.prototype.onCaptured = function (prize, x, y) {
     Effects.popup('クリア！', x, y - 120, '#9cf07a');
     Sound.clear();
     this.message = this.gameKey === 'boss' ? 'ぬしを たおした！ ひみつの けいひん ゲット！'
-      : opened ? 'クリア！ つぎの ゲームが ひらいた！' : 'クリア！';
+      : opened ? 'クリア！ つぎの だんが ひらいた！' : 'クリア！';
     this.messageTimer = 4;
     announced = true;
   }
@@ -208,7 +208,7 @@ GameSession.prototype.drawHud = function () {
     } else {
       lines.push('ゲット：' + over.gets + ' こ');
       if (challenge) lines.push('きんコイン：+' + over.earnedGold + ' 枚');
-      if (this.playMode === 'step') lines.push(this.stepCleared ? 'つぎの ゲームへ すすもう！' : 'クリアまで あと ' + Math.max(0, game.clearGets - over.gets) + ' こ');
+      if (this.playMode === 'step') lines.push(this.stepCleared ? 'つぎの だんへ すすもう！' : 'クリアまで あと ' + Math.max(0, game.clearGets - over.gets) + ' こ');
     }
     if (challenge) {
       hint = this.playsLeft > 0

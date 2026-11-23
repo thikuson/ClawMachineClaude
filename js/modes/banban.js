@@ -27,14 +27,19 @@ const BanbanMode = {
     cfg: null,       // 難しさを反映したアームの設定
   },
 
-  start() {
-    this.session = new GameSession('banban', { restartHint: 'R か「下ろす」で もういちど', showSwing: false });
+  // autoMove が true のときは、アームが自動で左右に往復する（おまかせバンバン）。key はセッションに渡すゲームの名前
+  autoMove: false,
+  autoDir: 1,
+
+  start(key, autoMove) {
+    this.autoMove = !!autoMove;
+    this.session = new GameSession(key || 'banban', { restartHint: 'R か「下ろす」で もういちど', showSwing: false });
     this.reset();
   },
 
   reset() {
     this.session.reset();
-    this.session.help = '← → で移動、スペースで下ろす';
+    this.session.help = this.autoMove ? 'ここだ！ と思ったら スペースで下ろす' : '← → で移動、スペースで下ろす';
     Effects.reset();
     this.setUp();
   },
@@ -170,8 +175,15 @@ const BanbanMode = {
 
     switch (a.state) {
       case 'idle':
-        if (Input.isDown('ArrowLeft')) a.x -= c.moveSpeed * dt;
-        if (Input.isDown('ArrowRight')) a.x += c.moveSpeed * dt;
+        if (this.autoMove) {
+          // おまかせバンバン：一定の速さで左右に往復し、端に着いたら折り返す
+          a.x += this.autoDir * c.autoSpeed * dt;
+          if (a.x >= c.maxX) this.autoDir = -1;
+          if (a.x <= c.minX) this.autoDir = 1;
+        } else {
+          if (Input.isDown('ArrowLeft')) a.x -= c.moveSpeed * dt;
+          if (Input.isDown('ArrowRight')) a.x += c.moveSpeed * dt;
+        }
         a.x = Math.max(c.minX, Math.min(c.maxX, a.x));
         if (Input.wasPressed('Space') && this.session.canPlay()) {
           this.session.usePlay();
@@ -652,4 +664,14 @@ const BanbanMode = {
     ctx.drawImage(img, Math.round(hx - img.width * 1.5), Math.round(headTop - 2), img.width * 3, img.height * 3);
     ctx.restore();
   },
+};
+
+// おまかせバンバン：バンバンの台で、アームが自動で左右に往復する。スペース（「下ろす」）を押すだけで遊べる
+// 景品の積み方や爪の動きはバンバンと同じで、左右の動かし方だけを変える
+const BanbanAutoMode = {
+  key: 'autobanban',
+  get session() { return BanbanMode.session; },
+  start() { BanbanMode.start('autobanban', true); },
+  update(dt) { BanbanMode.update(dt); },
+  draw() { BanbanMode.draw(); },
 };

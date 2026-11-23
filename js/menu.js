@@ -18,7 +18,7 @@ const Menu = {
     if (locked || poor) b.disabled = true;
     if (poor) b.classList.add('poor');
     const mark = locked ? '🔒 ' : state === 'cleared' ? '✔ ' : '';
-    const desc = locked ? 'まえの ゲームを クリアで ひらく' : game.desc;
+    const desc = locked ? 'まえの だんを クリアで ひらく' : game.desc;
     b.innerHTML =
       '<span class="menu-name">' + (number ? '<span class="menu-num">' + number + '</span>' : '') + mark + (locked ? '？？？' : game.name) + '</span>' +
       '<span class="menu-stars">' + (locked ? '' : this.stars(game.difficulty)) + '</span>' +
@@ -50,25 +50,32 @@ const Menu = {
 
     const cost = CONFIG.coins.stepCost;
     if (playMode === 'step') {
-      // ステップ：ジャンルの区切りをやめて、遊べるようになる順の 1 本道に並べる。
-      // クリアしたもの → 次に遊ぶもの（光らせる）→ まだ遊べないもの（鍵）。難しさごとに別々
+      // ステップ：ジャンルの段（STEP_STAGES）ごとに並べる。段の中のどれか 1 つをクリアすると、次の段が遊べるようになる。
+      // クリアしたもの（✔）、遊べてまだクリアしていない段のもの（光らせる）、まだ遊べないもの（鍵）。難しさごとに別々
       // 1 ゲーム遊ぶのに金コインがいる。足りないときは押せない
-      const order = Collection.stepOrder();
+      const stages = Collection.stepStages();
       const cleared = Collection.stepCleared[level];
-      const count = order.filter((g) => cleared.includes(g.key)).length;
+      const count = stages.filter((st, i) => Collection.isStageCleared(level, i)).length;
       const poor = !DEBUG && Collection.gold < cost;
       infoElement.innerHTML = (DEBUG ? '<span class="menu-warn">デバッグ：ぜんぶ むりょう</span>' : '<span>1 ゲーム 🥇' + cost + ' 枚</span>') +
-        value(count + ' / ' + order.length + ' クリア') +
+        value(count + ' / ' + stages.length + ' だん クリア') +
         (poor ? '<span class="menu-warn">🥇が たりない</span>' : '');
-      const grid = section('ステップ（' + LEVELS[level].label + '）');
-      for (const g of order) {
-        const state = cleared.includes(g.key) ? 'cleared' : Collection.isStepOpen(level, g.key) ? 'next' : 'locked';
-        // ぬしの台は金コインを多めに使う
-        const gameCost = g.stepCost || cost;
-        const note = g.stepCost ? '🥇' + gameCost + ' 枚で ちょうせん' : 'けいひん ' + g.clearGets + ' こで クリア';
-        add(grid, g, state, note, !DEBUG && Collection.gold < gameCost);
-        if (g.stepOnly) grid.lastChild.classList.add('boss');
-      }
+      stages.forEach((stage, i) => {
+        const stageDone = Collection.isStageCleared(level, i);
+        const last = i === stages.length - 1;
+        const title = (stageDone ? '✔ ' : '') + (i + 1) + 'だんめ：' + stage.name +
+          (last ? '' : stageDone ? '（クリア！）' : '（どれか 1 つ クリア）');
+        const grid = section(title);
+        for (const g of stage.games) {
+          const open = Collection.isStepOpen(level, g.key);
+          const state = cleared.includes(g.key) ? 'cleared' : !open ? 'locked' : stageDone ? null : 'next';
+          // ぬしの台は金コインを多めに使う
+          const gameCost = g.stepCost || cost;
+          const note = g.stepCost ? '🥇' + gameCost + ' 枚で ちょうせん' : 'けいひん ' + g.clearGets + ' こで クリア';
+          add(grid, g, state, note, !DEBUG && Collection.gold < gameCost);
+          if (g.stepOnly) grid.lastChild.classList.add('boss');
+        }
+      });
       return buttons;
     }
 

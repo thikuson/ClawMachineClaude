@@ -17,6 +17,7 @@ function createFloorMode(options) {
     layout: options.layout,
     arm: options.arm,
     control: options.control,
+    guide: !!options.guide, // true なら、狙っている間にねらいの光と奥行きの帯を出す（ガイドありの台）
     session: null,
     time: 0,
     prizes: [],
