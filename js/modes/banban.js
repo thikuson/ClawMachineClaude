@@ -86,8 +86,9 @@ const BanbanMode = {
       for (let row = 0; slots.length < types.length; row++) {
         const count = row % 2 ? perRow - 1 : perRow;
         for (let col = 0; col < count; col++) {
-          const y = g.shelfY - g.maxR - row * g.maxR * Math.sqrt(3) - 1;
           const inset = g.maxR + col * d + row % 2 * g.maxR;
+          // 床が傾いているので、床の高さに合わせて積む（外側ほど高い）
+          const y = this.floorY(box.x + inset) - g.maxR - row * g.maxR * Math.sqrt(3) - 1;
           slots.push({ x: box.x + inset, y });                 // 左の床（左の壁から右へ）
           slots.push({ x: box.x + box.w - inset, y });         // 右の床（右の壁から左へ）
         }
@@ -212,7 +213,7 @@ const BanbanMode = {
         a.y += c.downSpeed * dt;
         // 床に着くか、真下の景品の上に爪の先が乗ったら止める
         const hx = this.headX();
-        const touchFloor = this.tipY() >= g.shelfY - 2;
+        const touchFloor = this.tipY() >= this.floorY(hx) - 2;
         const touchPrize = this.prizes.some((p) => Math.abs(p.x - hx) < p.r * 0.8 && this.tipY() >= p.y - p.r * 0.2);
         if (touchFloor || touchPrize) this.setArm('closeWait');
         break;
@@ -532,6 +533,27 @@ const BanbanMode = {
     if (!b.held) { b.vx -= tx * slide * wb; b.vy -= ty * slide * wb; }
   },
 
+  // 高い床の上面の y 座標。床は取り出し口へ向かって下がる斜面（左は「＼」、右は「／」）。
+  // 取り出し口のふちで shelfY、壁ぎわで slopeRise だけ高い。取り出し口の上では shelfY を返す
+  floorY(x) {
+    const g = CONFIG.banban;
+    const box = CONFIG.case;
+    const left = g.chute.x;
+    const right = g.chute.x + g.chute.w;
+    if (x <= left) return g.shelfY - g.slopeRise * Math.min(1, (left - x) / (left - box.x));
+    if (x >= right) return g.shelfY - g.slopeRise * Math.min(1, (x - right) / (box.x + box.w - right));
+    return g.shelfY;
+  },
+
+  // 床の傾き（x が 1 進むと、床の y がどれだけ増えるか）。左の床は右下がりで正、右の床は左下がりで負
+  floorSlope(x) {
+    const g = CONFIG.banban;
+    const box = CONFIG.case;
+    return x <= g.chute.x
+      ? g.slopeRise / (g.chute.x - box.x)
+      : -g.slopeRise / (box.x + box.w - g.chute.x - g.chute.w);
+  },
+
   // 左右の高い床・ケースの壁・床の内側のふち（取り出し口との境）からはみ出さないようにする
   constrain(p) {
     const g = CONFIG.banban;
@@ -539,12 +561,28 @@ const BanbanMode = {
     const left = g.chute.x;              // 左の床の右のふち
     const right = g.chute.x + g.chute.w; // 右の床の左のふち
     p.ground = false;
-    // 床（取り出し口の上には床がなく、そのまま落ちていく）。弾まずに止まり、床とこすれて少しずつ遅くなる
-    if ((p.x <= left || p.x >= right) && p.y + p.r > g.shelfY) {
-      p.y = g.shelfY - p.r;
-      if (p.vy > 0) p.vy = 0;
-      p.ground = true;
-      p.vx *= PRIZE_SPRITES[p.type].round ? g.rollFriction : g.slideFriction;
+    // 床（取り出し口の上には床がなく、そのまま落ちていく）。床は斜面なので、斜面に垂直な向きに押し戻す。
+    // 弾まずに止まり、床とこすれて少しずつ遅くなる。斜面に沿った重力で、取り出し口の方へ少しずつ寄っていく
+    if (p.x <= left || p.x >= right) {
+      const m = this.floorSlope(p.x);
+      const len = Math.hypot(1, m);
+      const nx = m / len;   // 斜面の上向きの向き
+      const ny = -1 / len;
+      const gap = (this.floorY(p.x) - p.y) / len; // 景品の中心から斜面までの距離
+      if (gap < p.r) {
+        const over = p.r - gap;
+        p.x += nx * over;
+        p.y += ny * over;
+        const vn = p.vx * nx + p.vy * ny;
+        if (vn < 0) {
+          p.vx -= nx * vn;
+          p.vy -= ny * vn;
+        }
+        p.ground = true;
+        const f = PRIZE_SPRITES[p.type].round ? g.rollFriction : g.slideFriction;
+        p.vx *= f;
+        p.vy *= f;
+      }
     }
     if (p.x - p.r < box.x) { p.x = box.x + p.r; p.vx = Math.abs(p.vx) * 0.3; }
     if (p.x + p.r > box.x + box.w) { p.x = box.x + box.w - p.r; p.vx = -Math.abs(p.vx) * 0.3; }
@@ -607,13 +645,30 @@ const BanbanMode = {
     const bottom = box.y + box.h;
     const ch = g.chute;
     const lipR = this.levelSettings().lipR;
+    // 床の上面は、取り出し口へ向かって下がる斜面
     for (const [x0, x1] of [[box.x, ch.x], [ch.x + ch.w, box.x + box.w]]) {
+      const y0 = this.floorY(x0);
+      const y1 = this.floorY(x1);
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.lineTo(x1, bottom);
+      ctx.lineTo(x0, bottom);
+      ctx.closePath();
       ctx.fillStyle = c.floor;
-      ctx.fillRect(x0, g.shelfY, x1 - x0, bottom - g.shelfY);
+      ctx.fill();
+      ctx.clip();
       ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
       for (let y = g.shelfY + 24; y < bottom; y += 24) ctx.fillRect(x0, y, x1 - x0, 10);
-      ctx.fillStyle = '#ffe066';
-      ctx.fillRect(x0, g.shelfY, x1 - x0, 3);
+      ctx.restore();
+      // 上面のふちの黄色い線
+      ctx.strokeStyle = '#ffe066';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0 + 1.5);
+      ctx.lineTo(x1, y1 + 1.5);
+      ctx.stroke();
     }
     // 床の内側のふちの、低い丸いでっぱり
     ctx.fillStyle = '#ffe066';
