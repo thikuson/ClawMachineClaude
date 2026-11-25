@@ -101,7 +101,7 @@ const BossMode = {
     }
     // 左右にゆっくり歩く（アームが下りている間や、当たって震えている間は止まる）
     const speed = CONFIG.boss.wanderSpeed[Level.key];
-    if (speed > 0 && boss.shake === 0 && (Claw.state === 'idle' || Claw.state === 'return' || Claw.state === 'wait')) {
+    if (speed > 0 && boss.shake === 0 && (Claw.state === 'idle' || Claw.state === 'return' || Claw.state === 'dropWait' || Claw.state === 'wait' || Claw.state === 'shut')) {
       boss.x += boss.dir * speed * dt;
       if (boss.x >= this.maxX()) { boss.x = this.maxX(); boss.dir = -1; }
       if (boss.x <= this.minX()) { boss.x = this.minX(); boss.dir = 1; }

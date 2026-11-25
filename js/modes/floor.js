@@ -26,7 +26,7 @@ function createFloorMode(options) {
     claw: {
       state: '',
       x: 0, z: 0, h: 0,
-      openness: 1,
+      openness: 0, // 待っている間は爪を閉じている
       timer: 0,
       held: null,
       holdOffsetX: 0,
@@ -54,7 +54,7 @@ function createFloorMode(options) {
       c.x = u.home.x;
       c.z = u.home.z;
       c.h = u.topH;
-      c.openness = 1;
+      c.openness = this.restOpenness();
       c.held = null;
       c.swingX.reset(c.x);
       c.swingZ.reset(c.z);
@@ -124,6 +124,8 @@ function createFloorMode(options) {
     },
 
     setState(next) {
+      // 操作（control）から「下ろす」と言われたら、まず爪を開くところから始める
+      if (next === 'down' && this.claw.state !== 'openWait') next = 'open';
       this.claw.state = next;
       this.claw.timer = 0;
       // 状態に合わせて操作説明を変える
@@ -141,6 +143,13 @@ function createFloorMode(options) {
 
     headZ() {
       return this.claw.z + this.claw.swingZ.offset;
+    },
+
+    // 待っている間の爪の開き具合。2 本爪は、景品をつかんで運ぶときと同じくらいに少しだけ開いておく。3 本爪は閉じておく
+    restOpenness() {
+      const a = this.arm;
+      if (a.prongs !== 2) return 0;
+      return Math.max(0, Math.min(1, (CONFIG.clawPause.restSpread - a.tipClosed) / (a.tipOpen - a.tipClosed)));
     },
 
     tipSpread() {
@@ -182,15 +191,31 @@ function createFloorMode(options) {
       }
 
       switch (c.state) {
+        case 'open':
+          // 下ろす前に、その場で爪を開く
+          c.openness = Math.min(1, c.openness + dt / cc.openTime);
+          if (c.openness >= 1) this.setState('openWait');
+          break;
+
+        case 'openWait':
+          // 開いたまま少し止まってから下り始める
+          if (c.timer >= CONFIG.clawPause.open) this.setState('down');
+          break;
+
         case 'down': {
           c.h -= u.downSpeed * dt;
           // 床に着くか、真下の景品の中ほどまで下りたら止める
           const touchFloor = this.tipH() <= 2;
           const touchPrize = this.prizes.some((p) =>
             Math.hypot(p.x - this.headX(), p.z - this.headZ()) < p.r && this.tipH() <= p.h + p.r);
-          if (touchFloor || touchPrize) this.setState('close');
+          if (touchFloor || touchPrize) this.setState('closeWait');
           break;
         }
+
+        case 'closeWait':
+          // 下りきったら、開いたまま少し止まってから閉じ始める
+          if (c.timer >= CONFIG.clawPause.close) this.setState('close');
+          break;
 
         case 'close': {
           const target = this.findGripTarget();
@@ -201,10 +226,15 @@ function createFloorMode(options) {
           c.openness = Math.max(stop, c.openness - dt / cc.closeTime);
           if (c.timer >= cc.closeTime) {
             this.tryGrab(target);
-            this.setState('up');
+            this.setState('liftWait');
           }
           break;
         }
+
+        case 'liftWait':
+          // 爪を閉じたまま少し止まってから上がる
+          if (c.timer >= CONFIG.clawPause.lift) this.setState('up');
+          break;
 
         case 'up':
           c.h = Math.min(u.topH, c.h + u.upSpeed * dt);
@@ -221,7 +251,7 @@ function createFloorMode(options) {
           if (dist <= step) {
             c.x = u.home.x;
             c.z = u.home.z;
-            this.setState('release');
+            this.setState('dropWait');
           } else {
             c.x += dx / dist * step;
             c.z += dz / dist * step;
@@ -230,6 +260,11 @@ function createFloorMode(options) {
           break;
         }
 
+        case 'dropWait':
+          // 取り出し口の上で少し止まってから、爪を開いて景品を落とす
+          if (c.timer >= CONFIG.clawPause.drop) this.setState('release');
+          break;
+
         case 'release':
           c.openness = Math.min(1, c.openness + dt / cc.openTime);
           if (c.held) this.dropHeld();
@@ -237,10 +272,13 @@ function createFloorMode(options) {
           break;
 
         case 'wait':
-          if (c.timer >= 0.5) {
-            c.openness = 1;
-            this.setState(this.control.firstState);
-          }
+          if (c.timer >= 0.5) this.setState('shut');
+          break;
+
+        case 'shut':
+          // 爪を閉じてから、また動かせるようにする
+          c.openness = Math.max(this.restOpenness(), c.openness - dt / cc.closeTime);
+          if (c.openness <= this.restOpenness()) this.setState(this.control.firstState);
           break;
       }
     },

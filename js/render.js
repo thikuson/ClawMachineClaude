@@ -127,24 +127,92 @@ const Render = {
     // 爪
     const spread = claw.tipSpread();
     const tipY = claw.tipY();
-    const elbowY = claw.y + CONFIG.claw.armLength * 0.55;
     ctx.strokeStyle = c.claw;
     ctx.lineWidth = 5;
     ctx.lineCap = 'square';
     ctx.lineJoin = 'miter';
+    const elbow = this.armElbow(8, claw.y + 6, spread, tipY, claw.openness);
     for (const side of [-1, 1]) {
       ctx.beginPath();
       ctx.moveTo(hx + side * 8, claw.y + 6);
-      ctx.lineTo(hx + side * (spread + 8), elbowY);
+      ctx.lineTo(hx + side * elbow.r, elbow.y);
       ctx.lineTo(hx + side * spread, tipY);
-      ctx.lineTo(hx + side * (spread - 7), tipY - 2); // 先の返し
       ctx.stroke();
     }
+    // 爪の先の金属の板
+    for (const side of [-1, 1]) this.drawMetalTip(ctx, hx + side * spread, tipY, -side, 0, 1, false, this.tipPlateLength(spread));
 
     // 本体（ドット絵を 3 倍に拡大）
     const img = this.clawHeadImage;
     ctx.drawImage(img, Math.round(hx - img.width * 1.5), Math.round(headTop - 2),
       img.width * 3, img.height * 3);
+  },
+
+  // 爪の曲がり角（ひじ）の位置。爪は「上の棒」と「下の棒」が直角につながった 1 本の部品で、付け根を軸に回る形にする。
+  // 開ききると上の棒が真横、下の棒が真下（「|_   _|」の形）、閉じると上の棒が斜め下、下の棒が内側へ斜めになる（「＜_ _＞」の形）。
+  // 爪の先の位置（当たり判定）は今までどおり tipSpread と tipY で決まっているので、付け根と先を結ぶ線の上に
+  // 直角の角ができる点を、上の棒の向きから求める（先を上の棒の線に垂直に下ろした点）。
+  // r は中心から外へ向かう距離、y は下向き。openness は爪の開き具合（0 で閉じ、1 で全開）
+  armElbow(rootR, rootY, tipR, tipY, openness) {
+    const o = Math.max(0, Math.min(1, openness));
+    const a = (50 * Math.PI / 180) * (1 - o); // 上の棒が真横から下へ傾く角度
+    const ux = Math.cos(a);
+    const uy = Math.sin(a);
+    const len = Math.max(0, (tipR - rootR) * ux + (tipY - rootY) * uy);
+    return { r: rootR + ux * len, y: rootY + uy * len };
+  },
+
+  // 爪の先の金属の板の長さ。閉じたときに左右の板がぶつからないよう、先の位置が中心に近いときは短くする
+  tipPlateLength(spread) {
+    return Math.max(4, Math.min(12, spread - 2));
+  },
+
+  // 爪の先に付いた金属（アルミやステンレス）の薄い板。横から見た形で描く
+  // (x, y) は爪の先の付け根、(ix, iy) は爪の内側へ向かう向き（長さ 1）、k は大きさの倍率
+  // 板はまっすぐで、真横よりほんの少しだけ下を向く。dim を true にすると、奥にある爪として暗めに描く
+  drawMetalTip(ctx, x, y, ix, iy, k, dim, length) {
+    // 少し下へ傾けた向き
+    let dx = ix;
+    let dy = iy + 0.15;
+    const dl = Math.hypot(dx, dy) || 1;
+    dx /= dl;
+    dy /= dl;
+    // 板の厚みの向き（上側）
+    let nx = dy;
+    let ny = -dx;
+    if (ny > 0) { nx = -nx; ny = -ny; }
+    const len = (length || 12) * k;
+    const half = Math.max(1.5, 1.8 * k); // 厚みの半分
+    const pt = (a, b) => ({ x: x + dx * a + nx * b, y: y + dy * a + ny * b });
+    const c = [pt(0, half), pt(len, half * 0.8), pt(len, -half * 0.8), pt(0, -half)];
+    ctx.save();
+    // 板の地（銀色）と、まわりの縁
+    ctx.beginPath();
+    ctx.moveTo(c[0].x, c[0].y);
+    for (let i = 1; i < 4; i++) ctx.lineTo(c[i].x, c[i].y);
+    ctx.closePath();
+    ctx.fillStyle = dim ? '#8a939d' : '#b9c3cc';
+    ctx.fill();
+    ctx.strokeStyle = dim ? '#3f454d' : '#4d5560';
+    ctx.lineWidth = 1;
+    ctx.lineJoin = 'miter';
+    ctx.stroke();
+    // 上の面に光が当たって明るく見える筋
+    const t0 = pt(1, half * 0.45);
+    const t1 = pt(len - 1, half * 0.35);
+    ctx.strokeStyle = dim ? 'rgba(255, 255, 255, 0.45)' : 'rgba(255, 255, 255, 0.95)';
+    ctx.lineWidth = Math.max(0.8, 0.9 * k);
+    ctx.lineCap = 'butt';
+    ctx.beginPath();
+    ctx.moveTo(t0.x, t0.y);
+    ctx.lineTo(t1.x, t1.y);
+    ctx.stroke();
+    // 板を爪に留めているびょう
+    ctx.fillStyle = dim ? '#5f6770' : '#6b747f';
+    ctx.beginPath();
+    ctx.arc(pt(2.5 * k, 0).x, pt(2.5 * k, 0).y, Math.max(0.8, 0.9 * k), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   },
 
   // 上の取った数・残り回数・持っているコインと、下のメッセージ

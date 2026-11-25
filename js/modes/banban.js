@@ -19,7 +19,7 @@ const BanbanMode = {
     vel: 0,
     prevX: 0,
     prevSpeed: 0,
-    openness: 1,     // 爪の開き具合（1 で全開、0 で全閉）
+    openness: 0,     // 爪の開き具合（1 で全開、0 で全閉）。待っている間は閉じている
     stopOpenness: 0, // 景品をつかんでいるとき、それ以上閉じない開き具合
     timer: 0,
     held: null,      // つかんでいる景品
@@ -54,7 +54,7 @@ const BanbanMode = {
     a.offset = 0;
     a.vel = 0;
     a.prevSpeed = 0;
-    a.openness = 1;
+    a.openness = 0;
     a.held = null;
     a.timer = 0;
     this.placePrizes();
@@ -148,7 +148,7 @@ const BanbanMode = {
     a.prevSpeed = speed;
     const cable = Math.max(g.minCable, a.y - (CONFIG.case.y + 13));
     // かんたん・ふつうでは、上まで戻ったら揺れを早めに収める（左右に動かすときに揺れが残らないように）
-    const calm = !Level.settings.swing && a.state !== 'down' && a.state !== 'close' && a.state !== 'up';
+    const calm = !Level.settings.swing && a.state !== 'down' && a.state !== 'closeWait' && a.state !== 'close' && a.state !== 'liftWait' && a.state !== 'up';
     const damping = calm ? g.calmDamping : g.damping;
     a.vel += (-g.gravity / cable * a.offset - damping * a.vel) * dt;
     a.offset += a.vel * dt;
@@ -188,6 +188,19 @@ const BanbanMode = {
         if (Input.wasPressed('Space') && this.session.canPlay()) {
           this.session.usePlay();
           Sound.drop();
+          this.setArm('open');
+        }
+        break;
+
+      case 'open':
+        // 下ろす前に、その場で爪を開く
+        a.openness = Math.min(1, a.openness + dt / c.openTime);
+        if (a.openness >= 1) this.setArm('openWait');
+        break;
+
+      case 'openWait':
+        // 開いたまま少し止まってから下り始める
+        if (a.timer >= CONFIG.clawPause.open) {
           // 下ろし始めに、ガクンと大きく揺れ出す（真下にはまっすぐ下りない）
           const kick = g.swing.dropKickMin + Math.random() * (g.swing.dropKickMax - g.swing.dropKickMin);
           a.vel += (Math.random() < 0.5 ? -1 : 1) * kick;
@@ -201,9 +214,14 @@ const BanbanMode = {
         const hx = this.headX();
         const touchFloor = this.tipY() >= g.shelfY - 2;
         const touchPrize = this.prizes.some((p) => Math.abs(p.x - hx) < p.r * 0.8 && this.tipY() >= p.y - p.r * 0.2);
-        if (touchFloor || touchPrize) this.setArm('close');
+        if (touchFloor || touchPrize) this.setArm('closeWait');
         break;
       }
+
+      case 'closeWait':
+        // 下りきったら、開いたまま少し止まってから閉じ始める
+        if (a.timer >= CONFIG.clawPause.close) this.setArm('close');
+        break;
 
       case 'close': {
         const target = this.findGripTarget();
@@ -211,12 +229,19 @@ const BanbanMode = {
         a.openness = Math.max(a.stopOpenness, a.openness - dt / c.closeTime);
         if (a.timer >= c.closeTime) {
           this.tryGrab(target);
+          this.setArm('liftWait');
+        }
+        break;
+      }
+
+      case 'liftWait':
+        // 爪を閉じたまま少し止まってから上がる
+        if (a.timer >= CONFIG.clawPause.lift) {
           // 引き上げ始めに、ガクンと揺れる
           a.vel += (Math.random() - 0.5) * 2 * g.swing.liftKick;
           this.setArm('up');
         }
         break;
-      }
 
       case 'up':
         a.y -= c.upSpeed * dt;
@@ -232,10 +257,15 @@ const BanbanMode = {
         a.x += dir * c.returnSpeed * dt;
         if ((dir < 0 && a.x <= c.homeX) || (dir > 0 && a.x >= c.homeX) || dir === 0) {
           a.x = c.homeX;
-          this.setArm('release');
+          this.setArm('dropWait');
         }
         break;
       }
+
+      case 'dropWait':
+        // 取り出し口の上で少し止まってから、爪を開いて景品を落とす
+        if (a.timer >= CONFIG.clawPause.drop) this.setArm('release');
+        break;
 
       case 'release':
         a.openness = Math.min(1, a.openness + dt / c.openTime);
@@ -248,7 +278,13 @@ const BanbanMode = {
         break;
 
       case 'wait':
-        if (a.timer >= 0.5) this.setArm('idle');
+        if (a.timer >= 0.5) this.setArm('shut');
+        break;
+
+      case 'shut':
+        // 爪を閉じてから、また動かせるようにする
+        a.openness = Math.max(0, a.openness - dt / c.closeTime);
+        if (a.openness <= 0) this.setArm('idle');
         break;
     }
 
@@ -269,7 +305,7 @@ const BanbanMode = {
     a.state = next;
     a.timer = 0;
     if (next === 'idle') {
-      a.openness = 1;
+      a.openness = 0;
       // 待つ位置に戻ったら、投げたり離したりした景品も、また爪と当たるようにする
       for (const p of this.prizes) p.free = false;
     }
@@ -364,7 +400,7 @@ const BanbanMode = {
     ];
     // 引き上げてから戻るまでは、爪は景品を横へ押しのけるだけで、上へは押さない。
     // 上へも押すと、爪の先に載った景品がそのまま持ち上がって運ばれてしまう
-    const lifting = a.state !== 'down' && a.state !== 'close' && a.state !== 'idle';
+    const lifting = a.state !== 'down' && a.state !== 'closeWait' && a.state !== 'close' && a.state !== 'liftWait' && a.state !== 'idle';
     for (const p of this.prizes) {
       if (p.held || p.free) continue;
       for (const part of parts) {
@@ -617,7 +653,7 @@ const BanbanMode = {
     const hx = this.headX();
     const spread = this.tipSpread();
     const tipY = this.tipY();
-    const elbowY = a.y + a.cfg.armLength * 0.55;
+    const elbow = Render.armElbow(8, a.y + 6, spread, tipY, a.openness);
     ctx.save();
     ctx.beginPath();
     ctx.rect(box.x, 0, box.w, CONFIG.height);
@@ -639,11 +675,12 @@ const BanbanMode = {
     for (const side of [-1, 1]) {
       ctx.beginPath();
       ctx.moveTo(hx + side * 8, a.y + 6);
-      ctx.lineTo(hx + side * (spread + 8), elbowY);
+      ctx.lineTo(hx + side * elbow.r, elbow.y);
       ctx.lineTo(hx + side * spread, tipY);
-      ctx.lineTo(hx + side * (spread - 7), tipY - 2);
       ctx.stroke();
     }
+    // 左右の爪の先の金属の板（奥側なので暗め）
+    for (const side of [-1, 1]) Render.drawMetalTip(ctx, hx + side * spread, tipY, -side, 0, 1, true, Render.tipPlateLength(spread));
     // つかんでいる景品は、爪の間に
     if (a.held) {
       const p = a.held;
@@ -656,9 +693,15 @@ const BanbanMode = {
     ctx.beginPath();
     ctx.moveTo(hx, a.y + 6);
     ctx.lineTo(hx, midY);
-    ctx.lineTo(hx + 3, midY - 5);
     ctx.stroke();
     ctx.lineCap = 'butt';
+    // 真ん中の爪の先の金属の板。正面から見ると、爪と同じ幅の板が奥へ折れ曲がっているので、短い銀色の板に見える
+    ctx.fillStyle = '#4d5560';
+    ctx.fillRect(Math.round(hx) - 4, Math.round(midY) - 1, 8, 6);
+    ctx.fillStyle = '#b9c3cc';
+    ctx.fillRect(Math.round(hx) - 3, Math.round(midY), 6, 4);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.fillRect(Math.round(hx) - 3, Math.round(midY), 6, 1);
 
     const img = Render.clawHeadImage;
     ctx.drawImage(img, Math.round(hx - img.width * 1.5), Math.round(headTop - 2), img.width * 3, img.height * 3);

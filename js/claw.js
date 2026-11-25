@@ -1,9 +1,9 @@
 // アームの動き（状態ごとの処理）と、景品をつかむ判定
 const Claw = {
-  state: 'idle',  // idle / down / close / up / return / release / wait
+  state: 'idle',  // idle / open / openWait / down / closeWait / close / liftWait / up / return / dropWait / release / wait / shut
   x: 0,
   y: 0,
-  openness: 1,    // 爪の開き具合（1 で全開、0 で全閉）
+  openness: 0,    // 爪の開き具合（1 で全開、0 で全閉）。待っている間は閉じている
   stopOpenness: 0, // 景品をつかんでいるとき、それ以上閉じない開き具合
   timer: 0,
   held: null,     // つかんでいる景品
@@ -24,7 +24,7 @@ const Claw = {
     this.state = 'idle';
     this.x = c.homeX;
     this.y = c.homeY;
-    this.openness = 1;
+    this.openness = this.restOpenness();
     this.held = null;
     this.swing.reset(this.x);
   },
@@ -37,6 +37,12 @@ const Claw = {
   // 爪の先の y 座標
   tipY() {
     return this.y + this.cfg.armLength;
+  },
+
+  // 待っている間の爪の開き具合。景品をつかんで運ぶときと同じくらいに、少しだけ開いておく
+  restOpenness() {
+    const c = this.cfg;
+    return Math.max(0, Math.min(1, (CONFIG.clawPause.restSpread - c.tipClosed) / (c.tipOpen - c.tipClosed)));
   },
 
   // 爪の先の、中心からの横の距離
@@ -63,9 +69,22 @@ const Claw = {
         }
         this.x = Math.max(c.minX, Math.min(c.maxX, this.x));
         if (Input.wasPressed('Space') && this.canDrop()) {
-          this.setState('down');
+          this.setState('open');
           this.report('drop');
         }
+        break;
+      }
+
+      case 'open': {
+        // 下ろす前に、その場で爪を開く
+        this.openness = Math.min(1, this.openness + dt / c.openTime);
+        if (this.openness >= 1) this.setState('openWait');
+        break;
+      }
+
+      case 'openWait': {
+        // 開いたまま少し止まってから下り始める
+        if (this.timer >= CONFIG.clawPause.open) this.setState('down');
         break;
       }
 
@@ -75,7 +94,13 @@ const Claw = {
         const touchFloor = this.tipY() >= CONFIG.floorY - 2;
         const touchPrize = prizes.some((p) =>
           Math.abs(p.x - this.headX()) < p.r && this.tipY() >= p.y);
-        if (touchFloor || touchPrize) this.setState('close');
+        if (touchFloor || touchPrize) this.setState('closeWait');
+        break;
+      }
+
+      case 'closeWait': {
+        // 下りきったら、開いたまま少し止まってから閉じ始める
+        if (this.timer >= CONFIG.clawPause.close) this.setState('close');
         break;
       }
 
@@ -91,8 +116,15 @@ const Claw = {
         this.openness = Math.max(this.stopOpenness, this.openness - dt / c.closeTime);
         if (this.timer >= c.closeTime) {
           this.tryGrab(target);
-          this.setState('up');
+          this.setState('liftWait');
         }
+        break;
+      }
+
+      case 'liftWait': {
+        // 爪を閉じたまま少し止まってから上がる
+        this.carryHeld();
+        if (this.timer >= CONFIG.clawPause.lift) this.setState('up');
         break;
       }
 
@@ -112,10 +144,17 @@ const Claw = {
         this.x += dir * c.returnSpeed * dt;
         if ((dir < 0 && this.x <= c.homeX) || (dir > 0 && this.x >= c.homeX) || dir === 0) {
           this.x = c.homeX;
-          this.setState('release');
+          this.setState('dropWait');
         }
         this.carryHeld();
         this.checkSlip(dt);
+        break;
+      }
+
+      case 'dropWait': {
+        // 取り出し口の上で少し止まってから、爪を開いて景品を落とす
+        this.carryHeld();
+        if (this.timer >= CONFIG.clawPause.drop) this.setState('release');
         break;
       }
 
@@ -128,7 +167,15 @@ const Claw = {
 
       case 'wait': {
         // 景品が取り出し口に落ちるのを少し待ってから操作できるようにする
-        if (this.timer >= 0.5) this.setState('idle');
+        if (this.timer >= 0.5) this.setState('shut');
+        break;
+      }
+
+      case 'shut': {
+        // 爪を閉じてから、また動かせるようにする
+        const rest = this.restOpenness();
+        this.openness = Math.max(rest, this.openness - dt / c.closeTime);
+        if (this.openness <= rest) this.setState('idle');
         break;
       }
     }
@@ -138,7 +185,7 @@ const Claw = {
     this.state = next;
     this.timer = 0;
     if (next === 'idle') {
-      this.openness = 1;
+      this.openness = this.restOpenness();
       this.autoDir = 1; // 取り出し口から戻ってきたら、また右へ動き始める
     }
   },

@@ -241,7 +241,7 @@ const FloorRender = {
     const spread = mode.tipSpread() * k;
     const armLen = mode.arm.armLength * k;
     const tipY = head.y + armLen;
-    const elbowY = head.y + armLen * 0.55;
+    const elbow = Render.armElbow(8 * k, head.y + 6 * k, spread, tipY, mode.claw.openness);
     ctx.strokeStyle = c.claw;
     ctx.lineWidth = Math.max(3, 5 * k);
     ctx.lineCap = 'square';
@@ -249,11 +249,12 @@ const FloorRender = {
     for (const side of [-1, 1]) {
       ctx.beginPath();
       ctx.moveTo(head.x + side * 8 * k, head.y + 6 * k);
-      ctx.lineTo(head.x + side * (spread + 8 * k), elbowY);
+      ctx.lineTo(head.x + side * elbow.r, elbow.y);
       ctx.lineTo(head.x + side * spread, tipY);
-      ctx.lineTo(head.x + side * (spread - 7 * k), tipY - 2);
       ctx.stroke();
     }
+    // 爪の先の金属の板
+    for (const side of [-1, 1]) Render.drawMetalTip(ctx, head.x + side * spread, tipY, -side, 0, k, false, Render.tipPlateLength(spread / k));
   },
 
   // 3 本爪。真上から見て 120 度ずつの向きに開く（奥に 1 本、手前の左右に 2 本）
@@ -269,22 +270,49 @@ const FloorRender = {
     ctx.lineWidth = Math.max(3, 6 * head.k);
     ctx.lineCap = 'square';
     ctx.lineJoin = 'miter';
+    // 曲がり角の位置は、爪の向きの縦の面の中で求める（r は中心からの距離、y は下向きの高さ）
+    const bend = Render.armElbow(10, 4, spread, armLen, claw.openness);
     for (const deg of [90, 210, 330]) {
       const rad = deg * Math.PI / 180;
       const dx = Math.cos(rad);
       const dz = Math.sin(rad);
       if ((dz > 0) !== back) continue;
       const root = this.project(hx + dx * 10, hz + dz * 10, claw.h - 4);
-      const elbow = this.project(hx + dx * (spread + 10), hz + dz * (spread + 10), claw.h - armLen * 0.55);
+      const elbow = this.project(hx + dx * bend.r, hz + dz * bend.r, claw.h - bend.y);
       const tip = this.project(hx + dx * spread, hz + dz * spread, claw.h - armLen);
-      const hook = this.project(hx + dx * (spread - 9), hz + dz * (spread - 9), claw.h - armLen + 3);
       ctx.beginPath();
       ctx.moveTo(root.x, root.y);
       ctx.lineTo(elbow.x, elbow.y);
       ctx.lineTo(tip.x, tip.y);
-      ctx.lineTo(hook.x, hook.y);
       ctx.stroke();
+      // 爪の先の金属の板。内側（アームの真ん中）へ向けて付ける
+      if (Math.abs(dx) < 0.3) {
+        // 奥の爪は、板が手前（こちら）へ向いているので、爪と同じ幅の短い銀色の板に見える
+        this.drawMetalPlateFront(ctx, tip.x, tip.y, head.k, back);
+      } else {
+        // 左右の爪は、横から見た板として描く。内側の向きは、台の中で内側へ進めた点を画面に写して決める
+        const inner = this.project(hx + dx * (spread - 10), hz + dz * (spread - 10), claw.h - armLen);
+        const plate = Render.tipPlateLength(spread);
+        const ix = inner.x - tip.x;
+        const iy = inner.y - tip.y;
+        const len = Math.hypot(ix, iy) || 1;
+        Render.drawMetalTip(ctx, tip.x, tip.y, ix / len, iy / len, head.k, back, plate);
+      }
     }
+  },
+
+  // 正面から見た爪の先の金属の板（奥の爪用）。(x, y) は爪の先、k は大きさの倍率
+  drawMetalPlateFront(ctx, x, y, k, dim) {
+    const w = Math.max(5, 7 * k);
+    const h = Math.max(3, 4 * k);
+    const left = Math.round(x - w / 2);
+    const top = Math.round(y - 1);
+    ctx.fillStyle = dim ? '#3f454d' : '#4d5560';
+    ctx.fillRect(left - 1, top - 1, Math.round(w) + 2, Math.round(h) + 2);
+    ctx.fillStyle = dim ? '#8a939d' : '#b9c3cc';
+    ctx.fillRect(left, top, Math.round(w), Math.round(h));
+    ctx.fillStyle = dim ? 'rgba(255, 255, 255, 0.45)' : 'rgba(255, 255, 255, 0.9)';
+    ctx.fillRect(left, top, Math.round(w), 1);
   },
 
   // 床の手前の板の右側に、丸いランプを並べて表示する（ボタンの案内や残り時間）
