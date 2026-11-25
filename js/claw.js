@@ -7,6 +7,10 @@ const Claw = {
   stopOpenness: 0, // 景品をつかんでいるとき、それ以上閉じない開き具合
   timer: 0,
   held: null,     // つかんでいる景品
+  extras: [],     // いっしょにつかんでいるほかの景品 { p, offsetX（今のずれ）, targetX（並べる場所）, slipAt }（かんたんで、うまい位置のとき）
+  holdTargetX: 0, // つかんだ景品を並べる場所（アーム中心からの横のずれ）
+  holdOffsetBase: 0, // 1 つだけつかんでいるときの、横のずれ
+  gripOpenness: 0, // つかんだ景品をはさむ爪の開き具合
   holdOffsetX: 0, // つかんだ景品の、アーム中心からの横のずれ
   slipAt: -1,     // 景品が滑り落ちるまでの時間（-1 なら落ちない）
   swing: new Swing(), // 左右の揺れ
@@ -26,6 +30,7 @@ const Claw = {
     this.y = c.homeY;
     this.openness = this.restOpenness();
     this.held = null;
+    this.extras = [];
     this.swing.reset(this.x);
   },
 
@@ -115,7 +120,7 @@ const Claw = {
           : 0;
         this.openness = Math.max(this.stopOpenness, this.openness - dt / c.closeTime);
         if (this.timer >= c.closeTime) {
-          this.tryGrab(target);
+          this.tryGrab(target, prizes);
           this.setState('liftWait');
         }
         break;
@@ -123,14 +128,14 @@ const Claw = {
 
       case 'liftWait': {
         // 爪を閉じたまま少し止まってから上がる
-        this.carryHeld();
+        this.carryHeld(dt);
         if (this.timer >= CONFIG.clawPause.lift) this.setState('up');
         break;
       }
 
       case 'up': {
         this.y -= c.upSpeed * dt;
-        this.carryHeld();
+        this.carryHeld(dt);
         this.checkSlip(dt);
         if (this.y <= c.homeY) {
           this.y = c.homeY;
@@ -146,14 +151,14 @@ const Claw = {
           this.x = c.homeX;
           this.setState('dropWait');
         }
-        this.carryHeld();
+        this.carryHeld(dt);
         this.checkSlip(dt);
         break;
       }
 
       case 'dropWait': {
         // 取り出し口の上で少し止まってから、爪を開いて景品を落とす
-        this.carryHeld();
+        this.carryHeld(dt);
         if (this.timer >= CONFIG.clawPause.drop) this.setState('release');
         break;
       }
@@ -206,7 +211,7 @@ const Claw = {
   },
 
   // つかめるかどうかを決める。中心に近いほど成功しやすく、落ちにくい
-  tryGrab(target) {
+  tryGrab(target, prizes) {
     if (this.onHit) {
       if (target) {
         this.onHit(target, Math.abs(target.x - this.headX()) / target.r);
@@ -241,18 +246,90 @@ const Claw = {
     target.vx = 0;
     target.vy = 0;
     this.holdOffsetX = (target.x - this.headX()) * 0.4;
+    this.holdOffsetBase = this.holdOffsetX;
+    this.layoutGrip();
 
     // 持ち上げたあと滑り落ちるかどうかも、ここで決めておく
     const slipChance = Math.max(0.05, Math.min(0.8, (offset * 0.6 + 0.1) / grip));
     this.slipAt = Math.random() < slipChance ? 0.2 + Math.random() * 1.8 : -1;
     this.carryTime = 0;
+    if (prizes) this.grabExtras(target, prizes);
   },
 
-  // つかんだ景品をアームと一緒に動かす
-  carryHeld() {
+  // 開いた爪の間にあるほかの景品も、いっしょにつかむ（難しさの maxGrab が 2 以上のときだけ）。
+  // 爪の真ん中に近い景品ほどつかみやすい。いっしょにつかんだ景品は、最初につかんだ景品と横 1 列に並べて、爪ではさんで運ぶ
+  grabExtras(target, prizes) {
+    const c = this.cfg;
+    const room = (c.maxGrab || 1) - 1;
+    if (room <= 0) return;
+    const hx = this.headX();
+    const tipY = this.tipY();
+    const near = prizes
+      .filter((p) => p !== target && !p.held && Math.abs(p.x - hx) < c.tipOpen && Math.abs(p.y - tipY) < p.r + 10)
+      .sort((a, b) => Math.abs(a.x - hx) - Math.abs(b.x - hx));
+    for (const p of near.slice(0, room)) {
+      const inside = 1 - Math.abs(p.x - hx) / c.tipOpen; // 1 なら爪の真ん中
+      const chance = CONFIG.multiGrab.chance * (0.4 + 0.6 * inside) * PRIZE_SPRITES[p.type].grip;
+      if (Math.random() > chance) continue;
+      p.held = true;
+      p.vx = 0;
+      p.vy = 0;
+      // 今いる場所から、並べる場所へ少しずつ寄せる
+      const slipAt = Math.random() < CONFIG.multiGrab.slip ? 0.3 + Math.random() * 1.5 : -1;
+      this.extras.push({ p, offsetX: p.x - hx, targetX: 0, slipAt });
+    }
+    if (!this.extras.length) return;
+    this.layoutGrip();
+    this.openness = Math.max(this.openness, this.gripOpenness);
+    this.report('multi');
+  },
+
+  // つかんでいる景品（最初の 1 つと、いっしょにつかんだ景品）を、今の並び順のまま横 1 列にすき間なく並べ、
+  // 列の真ん中がアームの真ん中に来るようにする。爪は、列の両はしの景品をはさむところまで閉じる。
+  // 途中で 1 つ落ちたときにも呼んで、残った景品をはさみ直す
+  layoutGrip() {
+    const c = this.cfg;
+    if (!this.extras.length) {
+      // 1 つだけなら、今までどおりの位置ではさむ
+      this.holdTargetX = this.holdOffsetBase;
+      this.gripOpenness = Math.max(0, (this.held.r * 0.75 - c.tipClosed) / (c.tipOpen - c.tipClosed));
+      return;
+    }
+    const row = [{ p: this.held, x: this.holdOffsetX, main: true }, ...this.extras.map((e) => ({ p: e.p, x: e.offsetX, e }))]
+      .sort((a, b) => a.x - b.x);
+    // 隣どうしの間かくは、半径の和の 0.75 倍（少し重なって見えるくらい）
+    let x = 0;
+    row[0].t = 0;
+    for (let i = 1; i < row.length; i++) {
+      x += (row[i - 1].p.r + row[i].p.r) * 0.75;
+      row[i].t = x;
+    }
+    const shift = (row[0].t - row[0].p.r * 0.75 + row[row.length - 1].t + row[row.length - 1].p.r * 0.75) / 2;
+    for (const item of row) {
+      item.t -= shift;
+      if (item.main) this.holdTargetX = item.t;
+      else item.e.targetX = item.t;
+    }
+    const half = Math.max(...row.map((item) => Math.abs(item.t) + item.p.r * 0.75));
+    this.gripOpenness = Math.max(0, Math.min(1, (half - c.tipClosed) / (c.tipOpen - c.tipClosed)));
+  },
+
+  // つかんだ景品をアームと一緒に動かす。いっしょにつかんだ景品があるときは、並べる場所へ少しずつ寄せ、爪もそれに合わせる
+  carryHeld(dt = 1 / 60) {
     if (!this.held) return;
+    const k = Math.min(1, dt * 8);
+    this.holdOffsetX += (this.holdTargetX - this.holdOffsetX) * k;
     this.held.x = this.headX() + this.holdOffsetX;
     this.held.y = this.tipY() - this.held.r * 0.35;
+    for (const e of this.extras) {
+      e.offsetX += (e.targetX - e.offsetX) * k;
+      e.p.x = this.headX() + e.offsetX;
+      e.p.y = this.tipY() - e.p.r * 0.35;
+    }
+    // 爪は、はさんでいる景品に合わせて閉じる（1 つ落ちたら、残りをはさみ直す）
+    const step = dt / this.cfg.closeTime;
+    if (this.openness > this.gripOpenness) this.openness = Math.max(this.gripOpenness, this.openness - step);
+    else this.openness = Math.min(this.gripOpenness, this.openness + step);
   },
 
   // 決めておいた時間が来たか、揺れが大きすぎたら景品を落とす
@@ -260,6 +337,15 @@ const Claw = {
     if (!this.held) return;
     this.carryTime += dt;
     const grip = PRIZE_SPRITES[this.held.type].grip * Math.sqrt(this.cfg.gripPower || 1);
+    // いっしょにつかんだ景品は、決めておいた時間が来たら 1 つずつ落ちる
+    for (const e of this.extras.slice()) {
+      if (e.slipAt >= 0 && this.carryTime >= e.slipAt) {
+        this.releasePrize(e.p);
+        this.extras.splice(this.extras.indexOf(e), 1);
+        this.holdOffsetBase = 0; // 残りが 1 つになったら、爪の真ん中でつかみ直す
+        this.layoutGrip();
+      }
+    }
     const timeUp = this.slipAt >= 0 && this.carryTime >= this.slipAt;
     if (timeUp || Swing.shouldSlip(dt, [this.swing], grip)) {
       this.dropHeld();
@@ -268,12 +354,19 @@ const Claw = {
     }
   },
 
-  // 景品を離す。揺れの勢いが残っていれば、その向きに飛んでいく
+  // 景品を離す（いっしょにつかんでいた景品も全部）。揺れの勢いが残っていれば、その向きに飛んでいく
   dropHeld() {
-    this.held.held = false;
-    this.held.vx = this.swing.vel + this.swing.prevSpeed;
-    this.held.vy = 0;
+    this.releasePrize(this.held);
+    for (const e of this.extras) this.releasePrize(e.p);
+    this.extras = [];
     this.held = null;
+  },
+
+  // 景品 1 つを爪から離す
+  releasePrize(p) {
+    p.held = false;
+    p.vx = this.swing.vel + this.swing.prevSpeed;
+    p.vy = 0;
   },
 
   report(kind) {

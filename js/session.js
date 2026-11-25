@@ -104,6 +104,7 @@ GameSession.prototype.usePlay = function () {
 GameSession.prototype.onClawEvent = function (kind, x, y) {
   if (kind === 'drop') Sound.drop();
   if (kind === 'grab') Sound.grab();
+  if (kind === 'multi') Effects.popup('いっぺんに！', x, y - 30, '#ffe066');
   if (kind === 'miss') { Sound.miss(); this.showMessage('miss'); }
   if (kind === 'slip') {
     Sound.slip();

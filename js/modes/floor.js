@@ -29,6 +29,10 @@ function createFloorMode(options) {
       openness: 0, // 待っている間は爪を閉じている
       timer: 0,
       held: null,
+      extras: [], // いっしょにつかんでいるほかの景品 { p, offsetX, offsetZ, offsetH（今のずれ）, targetX（並べる場所）, slipAt }（かんたんで、うまい位置のとき）
+      holdTargetX: 0, // つかんだ景品を並べる場所（アーム中心からの左右のずれ）
+      holdOffsetBase: 0, // 1 つだけつかんでいるときの、左右のずれ
+      gripOpenness: 0, // つかんだ景品をはさむ爪の開き具合
       holdOffsetX: 0,
       holdOffsetZ: 0,
       slipAt: -1,
@@ -56,6 +60,7 @@ function createFloorMode(options) {
       c.h = u.topH;
       c.openness = this.restOpenness();
       c.held = null;
+      c.extras = [];
       c.swingX.reset(c.x);
       c.swingZ.reset(c.z);
       this.setState(this.control.firstState);
@@ -105,12 +110,22 @@ function createFloorMode(options) {
       types.sort(() => Math.random() - 0.5);
 
       this.prizes = [];
+      // かんたんで複数つかめるとき、layout.easyPair が true なら、2 個目を 1 個目の左右どちらかにくっつけて置く（いっぺんに取る狙いどころを作る）
+      const pair = u.easyPair && (this.arm.maxGrab || 1) > 1;
       for (const type of types) {
         const r = (p.minRadius + Math.random() * (p.maxRadius - p.minRadius)) * options.prizeScale;
         // 空いている場所が見つかるまで何度か試す
         for (let tries = 0; tries < 80; tries++) {
-          const x = u.spawnMinX + Math.random() * (u.spawnMaxX - u.spawnMinX);
-          const z = u.spawnMinZ + Math.random() * (u.spawnMaxZ - u.spawnMinZ);
+          let x = u.spawnMinX + Math.random() * (u.spawnMaxX - u.spawnMinX);
+          let z = u.spawnMinZ + Math.random() * (u.spawnMaxZ - u.spawnMinZ);
+          if (pair && this.prizes.length === 1) {
+            const first = this.prizes[0];
+            const gap = first.r + r + 2;
+            // 置き場所の範囲からはみ出さない側を選ぶ（両方大丈夫なら、どちらかをランダムに）
+            const side = first.x + gap > u.spawnMaxX ? -1 : first.x - gap < u.spawnMinX ? 1 : (Math.random() < 0.5 ? -1 : 1);
+            x = first.x + side * gap;
+            z = first.z;
+          }
           const overlaps = this.prizes.some((q) => Math.hypot(q.x - x, q.z - z) < q.r + r + 4);
           if (!overlaps || tries === 79) {
             this.prizes.push({
@@ -331,6 +346,8 @@ function createFloorMode(options) {
       target.vh = 0;
       c.holdOffsetX = (target.x - this.headX()) * 0.4;
       c.holdOffsetZ = (target.z - this.headZ()) * 0.4;
+      c.holdOffsetBase = c.holdOffsetX;
+      this.layoutGrip();
       c.swingX.kick(CONFIG.swing.grabKick);
       c.swingZ.kick(CONFIG.swing.grabKick);
       this.report('grab');
@@ -338,16 +355,99 @@ function createFloorMode(options) {
       const slipChance = Math.max(0.05, Math.min(0.8, (offset * 0.6 + 0.1) / grip));
       c.slipAt = Math.random() < slipChance ? 0.2 + Math.random() * 1.8 : -1;
       c.carryTime = 0;
+      this.grabExtras(target);
+    },
+
+    // 開いた爪の間にあるほかの景品も、いっしょにつかむ（難しさの maxGrab が 2 以上のときだけ。考え方はクラシックと同じ）。
+    // いっしょにつかんだ景品は、最初につかんだ景品と横 1 列に並べて、爪ではさんで運ぶ
+    grabExtras(target) {
+      const c = this.claw;
+      const cc = this.arm;
+      const room = (cc.maxGrab || 1) - 1;
+      if (room <= 0) return;
+      const hx = this.headX(), hz = this.headZ();
+      const dist = (p) => Math.hypot(p.x - hx, p.z - hz);
+      const near = this.prizes
+        .filter((p) => p !== target && !p.held && dist(p) < cc.tipOpen && Math.abs(p.h + p.r - this.tipH()) < p.r + 10)
+        .sort((a, b) => dist(a) - dist(b));
+      for (const p of near.slice(0, room)) {
+        const inside = 1 - dist(p) / cc.tipOpen; // 1 なら爪の真ん中
+        const chance = CONFIG.multiGrab.chance * (0.4 + 0.6 * inside) * PRIZE_SPRITES[p.type].grip * cc.gripFactor;
+        if (Math.random() > chance) continue;
+        p.held = true;
+        p.vx = 0;
+        p.vz = 0;
+        p.vh = 0;
+        // 今いる場所から、並べる場所へ少しずつ寄せる
+        const slipAt = Math.random() < CONFIG.multiGrab.slip ? 0.3 + Math.random() * 1.5 : -1;
+        c.extras.push({ p, offsetX: p.x - hx, offsetZ: p.z - hz, offsetH: p.h - (this.tipH() - p.r * 0.65), targetX: 0, slipAt });
+      }
+      if (!c.extras.length) return;
+      this.layoutGrip();
+      c.openness = Math.max(c.openness, c.gripOpenness);
+      this.report('multi');
+    },
+
+    // つかんでいる景品を、今の並び順のまま横（左右）1 列にすき間なく並べ、列の真ん中がアームの真ん中に来るようにする。
+    // 爪は、列の両はしの景品をはさむところまで閉じる。途中で 1 つ落ちたときにも呼んで、残った景品をはさみ直す
+    layoutGrip() {
+      const c = this.claw;
+      const cc = this.arm;
+      if (!c.extras.length) {
+        c.holdTargetX = c.holdOffsetBase;
+        c.gripOpenness = Math.max(0, (c.held.r * cc.hugRatio - cc.tipClosed) / (cc.tipOpen - cc.tipClosed));
+        return;
+      }
+      const row = [{ p: c.held, x: c.holdOffsetX, main: true }, ...c.extras.map((e) => ({ p: e.p, x: e.offsetX, e }))]
+        .sort((a, b) => a.x - b.x);
+      let x = 0;
+      row[0].t = 0;
+      for (let i = 1; i < row.length; i++) {
+        x += (row[i - 1].p.r + row[i].p.r) * 0.75;
+        row[i].t = x;
+      }
+      const last = row[row.length - 1];
+      const shift = (row[0].t - row[0].p.r * cc.hugRatio + last.t + last.p.r * cc.hugRatio) / 2;
+      for (const item of row) {
+        item.t -= shift;
+        if (item.main) c.holdTargetX = item.t;
+        else item.e.targetX = item.t;
+      }
+      const half = Math.max(...row.map((item) => Math.abs(item.t) + item.p.r * cc.hugRatio));
+      c.gripOpenness = Math.max(0, Math.min(1, (half - cc.tipClosed) / (cc.tipOpen - cc.tipClosed)));
     },
 
     // つかんだ景品をアームと一緒に動かし、決めておいた時間が来たら落とす
     carryHeld(dt) {
       const c = this.claw;
       if (!c.held) return;
+      // いっしょにつかんだ景品があるときは、並べる場所へ少しずつ寄せ、爪もそれに合わせて閉じる（1 つ落ちたら、残りをはさみ直す）
+      const k = Math.min(1, dt * 8);
+      c.holdOffsetX += (c.holdTargetX - c.holdOffsetX) * k;
       c.held.x = this.headX() + c.holdOffsetX;
       c.held.z = this.headZ() + c.holdOffsetZ;
       c.held.h = this.tipH() - c.held.r * 0.65;
+      for (const e of c.extras) {
+        e.offsetX += (e.targetX - e.offsetX) * k;
+        e.offsetZ += (c.holdOffsetZ - e.offsetZ) * k;
+        e.offsetH += (0 - e.offsetH) * k;
+        e.p.x = this.headX() + e.offsetX;
+        e.p.z = this.headZ() + e.offsetZ;
+        e.p.h = this.tipH() - e.p.r * 0.65 + e.offsetH;
+      }
+      const step = dt / this.arm.closeTime;
+      if (c.openness > c.gripOpenness) c.openness = Math.max(c.gripOpenness, c.openness - step);
+      else c.openness = Math.min(c.gripOpenness, c.openness + step);
       c.carryTime += dt;
+      // いっしょにつかんだ景品は、決めておいた時間が来たら 1 つずつ落ちる
+      for (const e of c.extras.slice()) {
+        if (e.slipAt >= 0 && c.carryTime >= e.slipAt) {
+          this.releasePrize(e.p);
+          c.extras.splice(c.extras.indexOf(e), 1);
+          c.holdOffsetBase = 0; // 残りが 1 つになったら、爪の真ん中でつかみ直す
+          this.layoutGrip();
+        }
+      }
       const grip = PRIZE_SPRITES[c.held.type].grip * this.arm.gripFactor * Math.sqrt(this.arm.gripPower || 1);
       const timeUp = c.slipAt >= 0 && c.carryTime >= c.slipAt;
       if (timeUp || Swing.shouldSlip(dt, [c.swingX, c.swingZ], grip)) {
@@ -357,14 +457,30 @@ function createFloorMode(options) {
       }
     },
 
-    // 景品を離す。揺れの勢いが残っていれば、その向きに飛んでいく
+    // 景品を離す（いっしょにつかんでいた景品も全部）。揺れの勢いが残っていれば、その向きに飛んでいく
     dropHeld() {
       const c = this.claw;
-      c.held.held = false;
-      c.held.vh = 0;
-      c.held.vx = c.swingX.vel + c.swingX.prevSpeed;
-      c.held.vz = c.swingZ.vel + c.swingZ.prevSpeed;
+      this.releasePrize(c.held);
+      for (const e of c.extras) this.releasePrize(e.p);
+      // 3 個並べて運んだときは、はしの景品の中心が取り出し口のふちぎりぎりになることがあるので、口の内側へ少しだけ寄せる
+      const u = this.layout;
+      if (this.claw.x < u.chute.w && this.claw.z < u.chute.d) {
+        for (const p of [c.held, ...c.extras.map((e) => e.p)]) {
+          p.x = Math.max(4, Math.min(u.chute.w - 4, p.x));
+          p.z = Math.max(4, Math.min(u.chute.d - 4, p.z));
+        }
+      }
+      c.extras = [];
       c.held = null;
+    },
+
+    // 景品 1 つを爪から離す
+    releasePrize(p) {
+      const c = this.claw;
+      p.held = false;
+      p.vh = 0;
+      p.vx = c.swingX.vel + c.swingX.prevSpeed;
+      p.vz = c.swingZ.vel + c.swingZ.prevSpeed;
     },
 
     report(kind) {
@@ -401,8 +517,8 @@ function createFloorMode(options) {
         }
       }
 
-      // 床にある景品どうしの重なりを解消する
-      const onFloor = this.prizes.filter((p) => !p.held && p.h < 1);
+      // 床にある景品どうしの重なりを解消する（取り出し口へ落ちていく景品は押し合わない。いっしょに落とした景品が口の外へ押し出されないように）
+      const onFloor = this.prizes.filter((p) => !p.held && p.h < 1 && !overChute(p));
       for (let iter = 0; iter < 3; iter++) {
         for (let i = 0; i < onFloor.length; i++) {
           for (let j = i + 1; j < onFloor.length; j++) {
