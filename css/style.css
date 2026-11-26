@@ -426,7 +426,7 @@ body {
 .dpad {
   display: grid;
   grid-template-columns: repeat(3, 52px);
-  grid-template-rows: repeat(3, 52px);
+  grid-template-rows: repeat(2, 52px); /* ↑ の段と、← ↓ → の段の 2 段（スマホで ↓ が画面の下に見切れないように） */
   gap: 4px;
 }
 
@@ -435,7 +435,7 @@ body {
 .dpad .up { grid-column: 2; grid-row: 1; }
 .dpad .left { grid-column: 1; grid-row: 2; }
 .dpad .right { grid-column: 3; grid-row: 2; }
-.dpad .down { grid-column: 2; grid-row: 3; }
+.dpad .down { grid-column: 2; grid-row: 2; }
 
 /* メニュー：モードのタブの下に、難しさの切り替え（3 つ） */
 .level-tabs {
