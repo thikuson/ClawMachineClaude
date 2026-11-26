@@ -24,6 +24,8 @@ const BanbanMode = {
     timer: 0,
     held: null,      // つかんでいる景品
     throwAt: -1,     // 持ち上げ始めてから景品を投げるまでの時間（-1 なら投げずに運ぶ）
+    digSpeed: 0,     // 景品をかき分けて潜っているときの、下りる速さ（押しのけるほど落ちる）
+    load: 0,         // 下りている間に、下にある景品を押しのけた量（その 1 回の計算の分）
     cfg: null,       // 難しさを反映したアームの設定
   },
 
@@ -113,8 +115,48 @@ const BanbanMode = {
     return this.arm.x + this.arm.offset;
   },
 
+  // アームの傾き（ラジアン）。アームはケーブルの先に吊られているので、ケーブルと同じ向きに傾く。
+  // 本体が右へ振れているときは正で、爪の先が右へ出る。傾きすぎないように maxTilt で止める
+  tilt() {
+    const a = this.arm;
+    const cable = Math.max(1, a.y - 10 - (CONFIG.case.y + 13));
+    const max = a.cfg.maxTilt * Math.PI / 180;
+    return Math.max(-max, Math.min(max, Math.atan2(a.offset, cable)));
+  },
+
+  // アームの本体（の中心）から見た位置 (lx, ly) を、画面の座標に直す。lx は右、ly は下向き。
+  // 傾いていないときは、本体の位置にそのまま足すだけになる
+  toWorld(lx, ly) {
+    const t = this.tilt();
+    const c = Math.cos(t);
+    const s = Math.sin(t);
+    return { x: this.headX() + lx * c + ly * s, y: this.arm.y - lx * s + ly * c };
+  },
+
+  // 画面の座標を、アームの本体から見た位置（toWorld の逆）に直す
+  toLocal(x, y) {
+    const t = this.tilt();
+    const c = Math.cos(t);
+    const s = Math.sin(t);
+    const dx = x - this.headX();
+    const dy = y - this.arm.y;
+    return { x: dx * c - dy * s, y: dx * s + dy * c };
+  },
+
+  // 傾いていないときの爪の先の高さ（本体からの距離を決めるもと）
   tipY() {
     return this.arm.y + this.arm.cfg.armLength;
+  },
+
+  // 3 本の爪の先の、画面での位置（傾きを反映する）
+  tips() {
+    const L = this.arm.cfg.armLength;
+    const spread = this.tipSpread();
+    return {
+      left: this.toWorld(-spread, L),
+      right: this.toWorld(spread, L),
+      mid: this.toWorld(0, L + 2),
+    };
   },
 
   // 外側の爪の先の、中心からの横の距離
@@ -154,7 +196,13 @@ const BanbanMode = {
     a.prevSpeed = speed;
     const cable = Math.max(g.minCable, a.y - (CONFIG.case.y + 13));
     // かんたん・ふつうでは、上まで戻ったら揺れを早めに収める（左右に動かすときに揺れが残らないように）
-    const calm = !Level.settings.swing && a.state !== 'down' && a.state !== 'closeWait' && a.state !== 'close' && a.state !== 'liftWait' && a.state !== 'up';
+    // 下りきって止まっている間（閉じるまで）は、爪の先が景品や床に当たって支えられているので揺れない。
+    // 傾いていれば、傾いたまま止まって爪を閉じる
+    if (a.state === 'closeWait' || a.state === 'close') {
+      a.vel = 0;
+      return;
+    }
+    const calm = !Level.settings.swing && a.state !== 'down' && a.state !== 'liftWait' && a.state !== 'up';
     const damping = calm ? g.calmDamping : g.damping;
     a.vel += (-g.gravity / cable * a.offset - damping * a.vel) * dt;
     a.offset += a.vel * dt;
@@ -165,7 +213,9 @@ const BanbanMode = {
     // ケースの壁より外へは振れない
     const box = CONFIG.case;
     const hx = a.x + a.offset;
-    const margin = this.tipSpread() + 6;
+    // 傾いていると、爪の先が本体より外へ出るので、その分も壁から離す
+    const tp = this.tips();
+    const margin = Math.max(Math.abs(tp.left.x - this.headX()), Math.abs(tp.right.x - this.headX())) + 6;
     if (hx < box.x + margin) { a.offset = box.x + margin - a.x; a.vel = Math.abs(a.vel) * 0.4; }
     if (hx > box.x + box.w - margin) { a.offset = box.x + box.w - margin - a.x; a.vel = -Math.abs(a.vel) * 0.4; }
   },
@@ -210,17 +260,23 @@ const BanbanMode = {
           // 下ろし始めに、ガクンと大きく揺れ出す（真下にはまっすぐ下りない）
           const kick = g.swing.dropKickMin + Math.random() * (g.swing.dropKickMax - g.swing.dropKickMin);
           a.vel += (Math.random() < 0.5 ? -1 : 1) * kick;
+          a.digSpeed = c.downSpeed;
+          a.load = 0;
           this.setArm('down');
         }
         break;
 
       case 'down': {
-        a.y += c.downSpeed * dt;
-        // 床に着くか、真下の景品の上に爪の先が乗ったら止める
-        const hx = this.headX();
-        const touchFloor = this.tipY() >= this.floorY(hx) - 2;
-        const touchPrize = this.prizes.some((p) => Math.abs(p.x - hx) < p.r * 0.8 && this.tipY() >= p.y - p.r * 0.2);
-        if (touchFloor || touchPrize) this.setArm('closeWait');
+        // 爪と本体で景品をかき分けながら潜っていく。下にある景品を押しのけるほど（load）勢いが落ち、
+        // 何にも当たっていなければ元の速さに戻る。勢いがなくなったところで止まって爪を閉じる
+        const dig = g.dig;
+        if (a.load > 0) a.digSpeed -= dig.drag * a.load;
+        else a.digSpeed = Math.min(c.downSpeed, a.digSpeed + dig.recover * dt);
+        a.y += Math.max(0, a.digSpeed) * dt;
+        // 爪の先のどれかが床に着いたら、それ以上は下りない
+        const tp = this.tips();
+        const touchFloor = [tp.left, tp.right, tp.mid].some((t) => t.y >= this.floorY(t.x) - 2);
+        if (touchFloor || a.digSpeed <= dig.stopSpeed) this.setArm('closeWait');
         break;
       }
 
@@ -296,8 +352,12 @@ const BanbanMode = {
 
     this.updateSwing(dt);
     if (a.held) {
-      a.held.x = this.headX();
-      a.held.y = this.tipY() - a.held.r * 0.4;
+      // つかんだ景品は、爪の間（傾いていれば、傾いた爪の間）に
+      // つかんだ位置から、爪の間の決まった位置へなめらかに寄せる（一瞬で移ったように見えないように）
+      const at = this.toWorld(0, c.armLength - a.held.r * 0.4);
+      const k = Math.min(1, dt * 10);
+      a.held.x += (at.x - a.held.x) * k;
+      a.held.y += (at.y - a.held.y) * k;
     }
     // 爪と本体の速さ（景品に当たったときに弾く強さに使う）
     const vx = (this.headX() - prevHeadX) / dt;
@@ -318,14 +378,19 @@ const BanbanMode = {
   },
 
   // 爪の間にある景品のうち、中心にいちばん近いものを探す
+  // アームが傾いているときは、傾いたアームから見た位置で比べる
+  // 爪の内側（左右の爪の先の間で、本体より下、爪の先より上）に中心がある景品だけを選ぶ。
+  // 爪の外や下にある景品は、閉じてもつかめない（爪の中へ急に移ったように見えないように）
   findGripTarget() {
-    const hx = this.headX();
-    const ty = this.tipY();
+    const L = this.arm.cfg.armLength;
+    const inner = this.arm.cfg.tipOpen - 4;
     let best = null;
     let bestDx = Infinity;
     for (const p of this.prizes) {
-      const dx = Math.abs(p.x - hx);
-      if (dx < this.arm.cfg.tipOpen && Math.abs(p.y - ty) < p.r + 8 && dx < bestDx) {
+      if (p.free) continue;
+      const lp = this.toLocal(p.x, p.y);
+      const dx = Math.abs(lp.x);
+      if (dx < inner && lp.y > 6 && lp.y < L + p.r * 0.3 && dx < bestDx) {
         best = p;
         bestDx = dx;
       }
@@ -343,12 +408,15 @@ const BanbanMode = {
       return;
     }
     const power = a.cfg.gripPower || 1;
-    const offset = Math.abs(target.x - this.headX()) / target.r / power;
+    const offset = Math.abs(this.toLocal(target.x, target.y).x) / target.r / power;
     const grip = PRIZE_SPRITES[target.type].grip * Math.sqrt(power);
-    const chance = Math.max(0.1, Math.min(0.95, lv.grab * (1.1 - offset * 0.6) * grip));
+    // 傾いているほど、つかみにくい（tiltRate は、最大まで傾いたときを 1 とした傾きの大きさ）
+    const tiltRate = Math.abs(this.tilt()) / (a.cfg.maxTilt * Math.PI / 180);
+    const g = CONFIG.banban;
+    const chance = Math.max(0.1, Math.min(0.95, lv.grab * (1.1 - offset * 0.6) * grip * (1 - g.tiltGrabLoss * tiltRate)));
     if (Math.random() > chance) {
       // つかみそこねた景品は、爪に押されて転がる
-      const dir = Math.sign(target.x - this.headX()) || (Math.random() < 0.5 ? -1 : 1);
+      const dir = Math.sign(this.toLocal(target.x, target.y).x) || (Math.random() < 0.5 ? -1 : 1);
       target.vx += dir * (60 + Math.random() * 100) * lv.pushPower;
       target.vy -= 60;
       Sound.miss();
@@ -360,7 +428,8 @@ const BanbanMode = {
     this.wakePrize(target);
     target.vx = 0;
     target.vy = 0;
-    a.throwAt = Math.random() < lv.throwChance ? 0.15 + Math.random() * 0.7 : -1;
+    // 傾いたままつかんだ景品は、持ち上げてアームが真っすぐに戻る途中で投げやすい
+    a.throwAt = Math.random() < Math.min(0.97, lv.throwChance + g.tiltThrowBonus * tiltRate) ? 0.15 + Math.random() * 0.7 : -1;
     Sound.grab();
   },
 
@@ -395,15 +464,22 @@ const BanbanMode = {
     const g = CONFIG.banban;
     const a = this.arm;
     const lv = this.levelSettings();
-    const hx = this.headX();
-    const ty = this.tipY();
-    const spread = this.tipSpread();
+    const tp = this.tips();
+    // 爪が開く向き（アームが傾いていれば、それに合わせて傾く）
+    const t = this.tilt();
+    const ox = Math.cos(t);
+    const oy = -Math.sin(t);
     const parts = [
-      { x: hx, y: a.y, r: 14, vx, vy },                    // 本体
-      { x: hx - spread, y: ty, r: 5, vx: vx - spreadV, vy }, // 左の爪の先
-      { x: hx + spread, y: ty, r: 5, vx: vx + spreadV, vy }, // 右の爪の先
-      { x: hx, y: ty + 2, r: 5, vx, vy },                   // 真ん中（手前）の爪の先
+      { x: this.headX(), y: a.y, r: 14, vx, vy, load: 2 },                                      // 本体
+      { x: tp.left.x, y: tp.left.y, r: 5, vx: vx - spreadV * ox, vy: vy - spreadV * oy, load: 1 }, // 左の爪の先
+      { x: tp.right.x, y: tp.right.y, r: 5, vx: vx + spreadV * ox, vy: vy + spreadV * oy, load: 1 }, // 右の爪の先
     ];
+    // 真ん中の爪は手前（奥行きの向き）にあるので、潜ってからつかむまでは景品に当たらない。
+    // 当たると、爪の内側に入った景品を真下から押し出してしまう
+    const gripping = a.state === 'down' || a.state === 'closeWait' || a.state === 'close';
+    if (!gripping) parts.push({ x: tp.mid.x, y: tp.mid.y, r: 5, vx, vy, load: 0 }); // 真ん中（手前）の爪の先
+    // 下りている間に、下にある景品を押しのけた量（下りる勢いが落ちる）
+    a.load = 0;
     // 引き上げてから戻るまでは、爪は景品を横へ押しのけるだけで、上へは押さない。
     // 上へも押すと、爪の先に載った景品がそのまま持ち上がって運ばれてしまう
     const lifting = a.state !== 'down' && a.state !== 'closeWait' && a.state !== 'close' && a.state !== 'liftWait' && a.state !== 'idle';
@@ -422,6 +498,7 @@ const BanbanMode = {
           ny = 0;
         }
         this.wakePrize(p);
+        if (a.state === 'down' && ny > 0) a.load += overlap * ny * part.load;
         p.x += nx * overlap;
         p.y += ny * overlap;
         // 爪がぶつかってくる速さの分だけ、景品に勢いを与える（強すぎないように上限を設ける）
@@ -709,11 +786,13 @@ const BanbanMode = {
     const a = this.arm;
     const box = CONFIG.case;
     const railY = box.y + 13;
-    const headTop = a.y - 10;
-    const hx = this.headX();
     const spread = this.tipSpread();
-    const tipY = this.tipY();
-    const elbow = Render.armElbow(8, a.y + 6, spread, tipY, a.openness);
+    const top = this.toWorld(0, -10); // ケーブルが付いている、本体の上のはし
+    // 爪と本体は、傾きに合わせて回して描く。ここから下は、本体の中心を (0, 0) とした位置で描く
+    const hx = 0;
+    const headTop = -10;
+    const tipY = a.cfg.armLength;
+    const elbow = Render.armElbow(8, 6, spread, tipY, a.openness);
     ctx.save();
     ctx.beginPath();
     ctx.rect(box.x, 0, box.w, CONFIG.height);
@@ -723,10 +802,13 @@ const BanbanMode = {
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(a.x, railY);
-    ctx.lineTo(hx, headTop);
+    ctx.lineTo(top.x, top.y);
     ctx.stroke();
     ctx.fillStyle = c.clawDark;
     ctx.fillRect(Math.round(a.x) - 16, railY - 7, 32, 12);
+
+    ctx.translate(this.headX(), a.y);
+    ctx.rotate(-this.tilt());
 
     // 左右の爪（奥側）
     ctx.strokeStyle = c.clawDark;
@@ -734,7 +816,7 @@ const BanbanMode = {
     ctx.lineCap = 'square';
     for (const side of [-1, 1]) {
       ctx.beginPath();
-      ctx.moveTo(hx + side * 8, a.y + 6);
+      ctx.moveTo(hx + side * 8, 6);
       ctx.lineTo(hx + side * elbow.r, elbow.y);
       ctx.lineTo(hx + side * spread, tipY);
       ctx.stroke();
@@ -744,14 +826,15 @@ const BanbanMode = {
     // つかんでいる景品は、爪の間に
     if (a.held) {
       const p = a.held;
-      Render.drawPrizeImage(p.type, p.x, p.y, Math.round(p.r * 2.2), PRIZE_SPRITES[p.type].round ? p.angle : 0);
+      const lp = this.toLocal(p.x, p.y);
+      Render.drawPrizeImage(p.type, lp.x, lp.y, Math.round(p.r * 2.2), PRIZE_SPRITES[p.type].round ? p.angle : 0);
     }
     // 真ん中の爪（手前側）。開くと先が手前に出てくるので、短く見える
     ctx.strokeStyle = c.claw;
     ctx.lineWidth = 6;
     const midY = tipY - (spread - a.cfg.tipClosed) * 0.35;
     ctx.beginPath();
-    ctx.moveTo(hx, a.y + 6);
+    ctx.moveTo(hx, 6);
     ctx.lineTo(hx, midY);
     ctx.stroke();
     ctx.lineCap = 'butt';

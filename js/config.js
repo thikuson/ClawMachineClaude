@@ -202,7 +202,15 @@ const CONFIG = {
       moveSpeed: 200, downSpeed: 240, upSpeed: 170, returnSpeed: 190,
       autoSpeed: 150, // おまかせバンバンで、アームが自動で左右に往復する速さ（px/秒、ずっと一定）
       armLength: 44, tipClosed: 6, tipOpen: 28, closeTime: 0.4, openTime: 0.3,
+      maxTilt: 25, // アームがケーブルと一緒に傾く角度の上限（度）
     },
+    // 傾いたまま止まってつかんだときの違い（最大まで傾いたとき。傾きが小さいほど、違いも小さい）。
+    // tiltGrabLoss はつかめる確率を何割下げるか、tiltThrowBonus は持ち上げる途中で投げる確率をどれだけ上げるか
+    tiltGrabLoss: 0.35,
+    tiltThrowBonus: 0.2,
+    // 景品をかき分けて潜る動き。drag は、下にある景品を押しのけた量 1px あたりに下りる速さ（px/秒）がどれだけ落ちるか、
+    // recover は何にも当たっていないときに元の速さへ戻る速さ（px/秒²）、stopSpeed はこの速さまで落ちたら止まって爪を閉じる速さ
+    dig: { drag: 0.8, recover: 600, stopSpeed: 25 },
     // ケーブルの揺れ。振り子と同じく、ケーブルが長いほどゆっくり揺れる
     swing: {
       gravity: 900,      // 揺れを戻す強さ（重力と同じ値）
