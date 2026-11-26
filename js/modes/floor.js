@@ -172,6 +172,11 @@ function createFloorMode(options) {
       return a.tipClosed + (a.tipOpen - a.tipClosed) * this.claw.openness;
     },
 
+    // 今押せるキー。押し方はゲームごとに違うので、操作（control）に決めてもらう
+    usableKeys() {
+      return this.control.usableKeys(this);
+    },
+
     update(dt) {
       FloorRender.layout = this.layout;
       this.time += dt;

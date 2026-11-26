@@ -123,6 +123,11 @@ const BanbanMode = {
     return c.tipClosed + (c.tipOpen - c.tipClosed) * this.arm.openness;
   },
 
+  // 今押せるキー。おまかせバンバンはアームが自動で動くので、「下ろす」だけ
+  usableKeys() {
+    return Input.usable(this.arm.state === 'idle' && this.session.canPlay(), !!this.session.gameOver, this.autoMove ? [] : ['ArrowLeft', 'ArrowRight']);
+  },
+
   update(dt) {
     this.time += dt;
     if (Input.wasPressed('KeyR')) this.reset();
@@ -770,6 +775,7 @@ const BanbanAutoMode = {
   key: 'autobanban',
   get session() { return BanbanMode.session; },
   start() { BanbanMode.start('autobanban', true); },
+  usableKeys() { return BanbanMode.usableKeys(); },
   update(dt) { BanbanMode.update(dt); },
   draw() { BanbanMode.draw(); },
 };

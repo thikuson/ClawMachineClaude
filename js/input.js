@@ -39,8 +39,8 @@ const Input = {
       const code = btn.dataset.key;
       const press = (e) => {
         e.preventDefault();
-        // 押せなくしたボタン（disabled）は、押しても何もしない（ブラウザによっては押した合図が届くため）
-        if (btn.disabled) return;
+        // 今は押せないボタン（灰色にしたもの）は、押しても何もしない
+        if (btn.disabled || btn.classList.contains('off')) return;
         this.keys[code] = true;
         this.pressedQueue[code] = true;
       };
@@ -62,6 +62,15 @@ const Input = {
   // 画面を切り替えたときに、前の画面で押されたキーが残らないように消す
   clearPressed() {
     this.pressedQueue = {};
+  },
+
+  // 各モードの usableKeys() で使う。今押せるキーの一覧を作る。
+  // ready：今アームを動かしたり下ろしたりできるか。over：ゲームが終わって、スペース（「下ろす」）で もういちど 遊べるか。
+  // moveKeys：ready のときだけ使える移動のキー
+  usable(ready, over, moveKeys = []) {
+    const keys = { Space: ready || over };
+    for (const k of moveKeys) keys[k] = ready;
+    return keys;
   },
 
   // 押された瞬間かどうか（1 回読むと消える）

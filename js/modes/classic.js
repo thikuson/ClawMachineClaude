@@ -25,6 +25,11 @@ const ClassicMode = {
     Effects.reset();
   },
 
+  // 今押せるキー（画面のボタンの色と、押せないときの入力を捨てるのに使う。main.js の updateButtons）
+  usableKeys() {
+    return Input.usable(Claw.state === 'idle' && Claw.canDrop(), !!this.session.gameOver, ['ArrowLeft', 'ArrowRight']);
+  },
+
   update(dt) {
     this.time += dt;
     if (Input.wasPressed('KeyR')) this.reset();

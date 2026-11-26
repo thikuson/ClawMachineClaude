@@ -26,6 +26,11 @@ const AutoMode = {
     Effects.reset();
   },
 
+  // 今押せるキー（アームは自動で動くので、「下ろす」だけ）
+  usableKeys() {
+    return Input.usable(Claw.state === 'idle' && Claw.canDrop(), !!this.session.gameOver);
+  },
+
   update(dt) {
     ClassicMode.update.call(this, dt);
   },

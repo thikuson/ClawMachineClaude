@@ -233,6 +233,11 @@ const RingMode = {
     return best;
   },
 
+  // 今押せるキー（台が傾いている途中などは、まだ下ろせない）。リング2だんも、これを使う
+  usableKeys() {
+    return Input.usable(this.arm.state === 'idle' && this.session.canPlay() && !this.busy(), !!this.session.gameOver, ['ArrowLeft', 'ArrowRight']);
+  },
+
   update(dt) {
     this.time += dt;
     if (Input.wasPressed('KeyR')) this.reset();

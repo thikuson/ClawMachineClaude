@@ -276,8 +276,31 @@
       startRandom();
       return;
     }
+    updateButtons(true);
     current.update(dt);
+    updateButtons(false);
     nextRandomButton.hidden = !(playingRandom && current.session.gameOver);
+  }
+
+  // 画面の操作ボタン：今押せるボタンだけを光らせて（ピンク）、押せないボタンは灰色にして押せなくする。
+  // 押せるかどうかは、各モードの usableKeys() で決める。
+  // before が true のとき（モードを動かす前）は、押せないときに押されたキーを捨てる。
+  // 残しておくと、あとで押せるようになったときに勝手に動いてしまうため（例：アームが戻ったとたんに、また下りてしまう）
+  function updateButtons(before) {
+    if (!current.usableKeys) return;
+    const keys = current.usableKeys();
+    if (before) {
+      for (const code in keys) if (!keys[code]) Input.wasPressed(code);
+      return;
+    }
+    const box = controls[current.key];
+    if (!box) return;
+    for (const btn of box.querySelectorAll('[data-key]')) {
+      const usable = keys[btn.dataset.key];
+      if (usable === undefined) continue;
+      btn.classList.toggle('off', !usable);
+      btn.setAttribute('aria-disabled', usable ? 'false' : 'true');
+    }
   }
 
   // メニューの背景に出すゲーム。マウスを乗せているもの → キーボードで選んでいるもの → 最後に遊んだもの の順に決める

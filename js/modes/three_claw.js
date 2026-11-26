@@ -16,6 +16,13 @@ const FreeControl = {
     return false;
   },
 
+  // 今押せるキー。動かすか下ろすかで 1 回が始まり、下ろすまでのあいだは何度でも動かせる
+  usableKeys(mode) {
+    const s = mode.claw.state;
+    const ready = (s === 'ready' && mode.session.canPlay()) || s === 'aim';
+    return Input.usable(ready, !!mode.session.gameOver, ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
+  },
+
   anyMoveKey() {
     return ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].some((k) => Input.isDown(k));
   },

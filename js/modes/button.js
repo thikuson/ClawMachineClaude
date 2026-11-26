@@ -52,6 +52,16 @@ const ButtonControl = {
     }
   },
 
+  // 今押せるキー。① は最初の 1 回と押しているあいだ（ゲームが終わったあとは、もういちど 遊ぶのに使う）、② は ① のあと。
+  // 1 と 2 の数字キーも、① ② と同じに扱う
+  usableKeys(mode) {
+    const s = mode.claw.state;
+    const over = !!mode.session.gameOver;
+    const one = (s === 'ready1' && mode.session.canPlay()) || s === 'move1' || over;
+    const two = (s === 'ready2' || s === 'move2') && !over;
+    return { ArrowRight: one, Digit1: one, ArrowUp: two, Digit2: two };
+  },
+
   // 床の手前の板に、いま押せるボタンを光らせて表示する
   drawPanel(ctx, mode) {
     const state = mode.claw.state;

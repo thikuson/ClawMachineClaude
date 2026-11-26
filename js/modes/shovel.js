@@ -124,6 +124,11 @@ const ShovelMode = {
     return { x: g.pivotX + ux * a.length, y: g.pivotY + uy * a.length, ux, uy, vx: -uy, vy: ux };
   },
 
+  // 今押せるキー（ショベルが待っているときだけ「下ろす」）
+  usableKeys() {
+    return Input.usable(this.arm.state === 'wait' && this.session.canPlay(), !!this.session.gameOver);
+  },
+
   update(dt) {
     this.time += dt;
     if (Input.wasPressed('KeyR')) this.reset();
