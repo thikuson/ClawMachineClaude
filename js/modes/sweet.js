@@ -3,7 +3,7 @@
 // 下の段（床）は取り出し口に向かって広がる扇形。扇の横から落ちた景品は取れない。
 // 押すと、ショベルが「ウィーン」と 1/4 円を描くように伸びながら、毎回同じ場所の景品の山へ沈み、少し止まってから引き上げる。
 // 引き上げるときは内側へ巻き込むように引きながら持ち上げ、通り道の景品をかき集めてすくう（0 個のことも、何個も取れることもある）。すくった景品はプッシャーの床の上まで運び、
-// 「おとす」（↓ かスペース）を押したときに落とす（押さないとしばらくして自動で落とす）。
+// 「おとす」（↓）を押したときに落とす（押さないとしばらくして自動で落とす）。
 // 押し板に押された景品がほかの景品を押して、手前のふちから取り出し口へ落ちた景品が獲得になる
 const SweetMode = Object.assign(Object.create(ShovelMode), {
   key: 'sweet',
@@ -106,6 +106,22 @@ const SweetMode = Object.assign(Object.create(ShovelMode), {
     Effects.update(dt);
     const busy = this.arm.state !== 'wait' || this.sinceDump < this.cfg().settleTime;
     this.session.update(dt, !busy, 1);
+    this.updateButtons();
+  },
+
+  // 画面のボタン：今押せるボタンだけをピンクにして、押せないボタンは暗くして押せなくする。
+  // アームが待っているあいだは「下ろす」、すくった景品をプッシャーの上まで運び終えたら「おとす」。
+  // 下ろしてから運び終えるまでは、どちらも押せない。ゲームが終わったあとは、「下ろす」で もういちど 遊べる
+  updateButtons() {
+    const lower = document.querySelector('#controls-sweet .lower');
+    const release = document.querySelector('#controls-sweet .release');
+    if (!lower || !release) return;
+    const canLower = this.arm.state === 'wait' || this.session.gameOver;
+    const canRelease = this.arm.state === 'ready' && !this.session.gameOver;
+    lower.disabled = !canLower;
+    lower.classList.toggle('idle', !canLower);
+    release.disabled = !canRelease;
+    release.classList.toggle('idle', !canRelease);
   },
 
   // 下ろす（1/4 円を描いて斜めに沈む）・止まる・巻き込んで引き上げる・おとす のタイミングは、ここで動かす。
@@ -113,6 +129,10 @@ const SweetMode = Object.assign(Object.create(ShovelMode), {
   updateArm(dt) {
     const g = this.cfg();
     const a = this.arm;
+    // 使えないときに押されたボタンは、ここで捨てる。残しておくと、あとで使えるようになったときに勝手に動いてしまうため
+    // （例：すくったあとにスペースを押すと、アームが戻ったとたんに、また下ろしてしまう）
+    if (a.state !== 'wait') Input.wasPressed('Space');
+    if (a.state !== 'ready') Input.wasPressed('ArrowDown');
     switch (a.state) {
       case 'wait':
         a.timer += dt;
@@ -185,16 +205,17 @@ const SweetMode = Object.assign(Object.create(ShovelMode), {
           if (!a.load.length) this.setArm('back');
           else {
             this.setArm('ready');
-            this.session.help = 'すきな タイミングで ↓ か スペースで おとす';
+            this.session.help = 'すきな タイミングで ↓ で おとす';
           }
         }
         return;
       }
       case 'ready':
-        // おとすボタン（↓ かスペース）を待つ。しばらく押さないと、自動で落とす
+        // おとすボタン（↓）を待つ。しばらく押さないと、自動で落とす。
+        // 「下ろす」（スペース）では落とさない。画面に「下ろす」と「おとす」の 2 つのボタンがあるので、まぎれないようにするため
         a.timer += dt;
         a.tilt = -0.2 + Math.sin(this.time * 4) * 0.03;
-        if (Input.wasPressed('ArrowDown') || Input.wasPressed('Space') || a.timer >= g.dropWait) {
+        if (Input.wasPressed('ArrowDown') || a.timer >= g.dropWait) {
           this.session.help = 'けいひんが まわってきたら スペースで下ろす';
           this.setArm('dump');
         }

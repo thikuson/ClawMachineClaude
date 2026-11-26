@@ -60,6 +60,9 @@ body {
 .controls button:active { background: #7a6db8; }
 
 .controls .drop { background: #e85d8a; min-width: 96px; }
+/* 今は目立たせないボタン（スウィートの「下ろす」「おとす」の切り替えに使う） */
+.controls .drop.idle { background: #5a4f8c; }
+.controls button:disabled { opacity: 0.45; cursor: default; }
 
 /* 景品の図鑑 */
 .zukan {

@@ -450,7 +450,7 @@ const GAMES = [
   { key: 'buttonGuide', name: '2ボタン ガイド', desc: 'ねらいの光つきの 2ボタン', genre: 'arm', difficulty: 1, clearGets: 3 },
   { key: 'threeGuide',  name: '3本爪 ガイド',  desc: 'ねらいの光つきの 3本爪', genre: 'arm', difficulty: 1, clearGets: 2 },
   { key: 'shovel',  name: 'ショベル',   desc: '回る台の景品をすくう', genre: 'onetouch', difficulty: 1, clearGets: 3 },
-  { key: 'sweet',   name: 'スウィート', desc: 'まわる台から すくって おしだす', genre: 'onetouch', difficulty: 1, clearGets: 3 },
+  { key: 'sweet',   name: 'スウィート', desc: 'まわる台から すくって おしだす', genre: 'trick', difficulty: 1, clearGets: 3 },
   { key: 'autobanban', name: 'おまかせバンバン', desc: '自動で動く揺れる爪を下ろすだけ', genre: 'onetouch', difficulty: 1, clearGets: 3 },
   { key: 'ring',    name: 'リング',     desc: 'リングをフックにかける', genre: 'trick', difficulty: 1, clearGets: 3 },
   { key: 'ring2',   name: 'リング2だん', desc: 'うえの フックで したの台を ひく', genre: 'trick', difficulty: 2, clearGets: 2 },

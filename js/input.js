@@ -39,6 +39,8 @@ const Input = {
       const code = btn.dataset.key;
       const press = (e) => {
         e.preventDefault();
+        // 押せなくしたボタン（disabled）は、押しても何もしない（ブラウザによっては押した合図が届くため）
+        if (btn.disabled) return;
         this.keys[code] = true;
         this.pressedQueue[code] = true;
       };

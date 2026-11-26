@@ -8,7 +8,7 @@
   <title>クレーンゲーム</title>
   <!-- css と js の後ろの ?v= は版の印。スマホのブラウザが古い css・js を覚えたまま新しい index.html と
        組み合わせて表示が崩れることがあるので、内容を変えて公開するときはこの印を全部書き換える -->
-  <link rel="stylesheet" href="css/style.css?v=20261126a">
+  <link rel="stylesheet" href="css/style.css?v=20261126b">
 </head>
 <body>
   <main class="app">
@@ -81,10 +81,10 @@
       <button type="button" data-key="ArrowRight" aria-label="右へ移動">→</button>
     </div>
 
-    <!-- スウィートの操作ボタン（ショベルと同じ） -->
+    <!-- スウィートの操作ボタン。目立たせるボタンと押せないボタンは sweet.js の updateButtons で切り替える -->
     <div id="controls-sweet" class="controls" hidden>
-      <button type="button" data-key="Space" class="drop">下ろす</button>
-      <button type="button" data-key="ArrowDown">おとす</button>
+      <button type="button" data-key="Space" class="drop lower">下ろす</button>
+      <button type="button" data-key="ArrowDown" class="drop release idle">おとす</button>
     </div>
 
     <!-- リング2だんの操作ボタン（クラシックと同じ） -->
@@ -146,7 +146,7 @@
     <p id="help-ring" class="help" hidden>キーボード：← → で移動、スペースか Enter で下ろす。リングはひもで揺れながら下ります。フックの先の下にもぐったリングを引き上げると、先が輪をくぐって引っかかり、台が傾いて景品が全部取り出し口へ。R でリセット、M で効果音の切り替え</p>
     <p id="help-shovel" class="help" hidden>キーボード：スペースか Enter でショベルを下ろす。ショベルは「⊃」の形に動いて毎回同じ場所に下り、テーブルの手前を少しだけ左へ引いて景品をすくい、手前の取り出し口へ運ぶ。R でリセット、M で効果音の切り替え</p>
     <p id="help-banban" class="help" hidden>キーボード：← → で移動、スペースか Enter で下ろす。アームは大きく揺れながら下り、つかんだ景品を投げたり、当たった景品を弾いたりする。真ん中の取り出し口に落ちた景品がゲット。R でリセット、M で効果音の切り替え</p>
-    <p id="help-sweet" class="help" hidden>キーボード：スペースか Enter で下ろす、↓（またはもう一度スペース）でおとす。ショベルが伸びながら斜めに、毎回同じ場所で景品の山へ沈み、少し止まってから、内側へ巻き込むように引き上げる（0 こ のことも、何こ も すくえることもある）。すくった景品は手前のプッシャーの上まで運ぶので、すきなタイミングで「おとす」（しばらく押さないと自動で落とす）。上の段（押し板の上）から下の段（扇形の床）へ落ち、押し板に押されて手前のふちから落ちた景品がゲット。扇の左右から落ちた景品は取れない。R でリセット、M で効果音の切り替え</p>
+    <p id="help-sweet" class="help" hidden>キーボード：スペースか Enter で下ろす、↓ でおとす（すくったあとは、スペースでは落ちない）。ショベルが伸びながら斜めに、毎回同じ場所で景品の山へ沈み、少し止まってから、内側へ巻き込むように引き上げる（0 こ のことも、何こ も すくえることもある）。すくった景品は手前のプッシャーの上まで運ぶので、すきなタイミングで「おとす」（しばらく押さないと自動で落とす）。上の段（押し板の上）から下の段（扇形の床）へ落ち、押し板に押されて手前のふちから落ちた景品がゲット。扇の左右から落ちた景品は取れない。R でリセット、M で効果音の切り替え</p>
     <p id="help-ring2" class="help" hidden>キーボード：← → で移動、スペースか Enter で下ろす。上の段の左右に立つ「？」のフックの先に、リングをくぐらせて引き上げると、ひもでつながった下の台が傾いて、景品が真ん中の取り出し口に流れ込む。フックはいろいろな向きを向き、リングもくるくる回るので、リングの穴の向きがフックの先に合ったときだけ引っかかる。R でリセット、M で効果音の切り替え</p>
     <p id="help-autobanban" class="help" hidden>キーボード：スペースか Enter で下ろす。アームは自動で左右に往復するので、ちょうどいいところで下ろす。下りるときは大きく揺れ、つかんだ景品を投げたり、当たった景品を弾いたりする。真ん中の取り出し口に落ちた景品がゲット。R でリセット、M で効果音の切り替え</p>
     <p id="help-boss" class="help" hidden>キーボード：← → で移動、スペースか Enter で下ろす。ぬしは大きすぎてつかめないので、アームを当てて体力を減らす。真ん中に当てるほど大きく減り、0 にすると取り出し口へ転がり落ちる。R でリセット、M で効果音の切り替え</p>
@@ -154,31 +154,31 @@
   </main>
 
   <!-- ES モジュールを使わず、読み込み順で依存関係を解決する（?v= の印は、上の css の説明を参照） -->
-  <script src="js/config.js?v=20261126a"></script>
-  <script src="js/level.js?v=20261126a"></script>
-  <script src="js/sprites.js?v=20261126a"></script>
-  <script src="js/input.js?v=20261126a"></script>
-  <script src="js/prize.js?v=20261126a"></script>
-  <script src="js/swing.js?v=20261126a"></script>
-  <script src="js/claw.js?v=20261126a"></script>
-  <script src="js/effects.js?v=20261126a"></script>
-  <script src="js/sound.js?v=20261126a"></script>
-  <script src="js/collection.js?v=20261126a"></script>
-  <script src="js/render.js?v=20261126a"></script>
-  <script src="js/render_floor.js?v=20261126a"></script>
-  <script src="js/session.js?v=20261126a"></script>
-  <script src="js/menu.js?v=20261126a"></script>
-  <script src="js/modes/classic.js?v=20261126a"></script>
-  <script src="js/modes/auto.js?v=20261126a"></script>
-  <script src="js/modes/floor.js?v=20261126a"></script>
-  <script src="js/modes/button.js?v=20261126a"></script>
-  <script src="js/modes/three_claw.js?v=20261126a"></script>
-  <script src="js/modes/ring.js?v=20261126a"></script>
-  <script src="js/modes/ring2.js?v=20261126a"></script>
-  <script src="js/modes/shovel.js?v=20261126a"></script>
-  <script src="js/modes/sweet.js?v=20261126a"></script>
-  <script src="js/modes/banban.js?v=20261126a"></script>
-  <script src="js/modes/boss.js?v=20261126a"></script>
-  <script src="js/main.js?v=20261126a"></script>
+  <script src="js/config.js?v=20261126b"></script>
+  <script src="js/level.js?v=20261126b"></script>
+  <script src="js/sprites.js?v=20261126b"></script>
+  <script src="js/input.js?v=20261126b"></script>
+  <script src="js/prize.js?v=20261126b"></script>
+  <script src="js/swing.js?v=20261126b"></script>
+  <script src="js/claw.js?v=20261126b"></script>
+  <script src="js/effects.js?v=20261126b"></script>
+  <script src="js/sound.js?v=20261126b"></script>
+  <script src="js/collection.js?v=20261126b"></script>
+  <script src="js/render.js?v=20261126b"></script>
+  <script src="js/render_floor.js?v=20261126b"></script>
+  <script src="js/session.js?v=20261126b"></script>
+  <script src="js/menu.js?v=20261126b"></script>
+  <script src="js/modes/classic.js?v=20261126b"></script>
+  <script src="js/modes/auto.js?v=20261126b"></script>
+  <script src="js/modes/floor.js?v=20261126b"></script>
+  <script src="js/modes/button.js?v=20261126b"></script>
+  <script src="js/modes/three_claw.js?v=20261126b"></script>
+  <script src="js/modes/ring.js?v=20261126b"></script>
+  <script src="js/modes/ring2.js?v=20261126b"></script>
+  <script src="js/modes/shovel.js?v=20261126b"></script>
+  <script src="js/modes/sweet.js?v=20261126b"></script>
+  <script src="js/modes/banban.js?v=20261126b"></script>
+  <script src="js/modes/boss.js?v=20261126b"></script>
+  <script src="js/main.js?v=20261126b"></script>
 </body>
 </html>
