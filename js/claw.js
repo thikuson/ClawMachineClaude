@@ -1,6 +1,6 @@
 // アームの動き（状態ごとの処理）と、景品をつかむ判定
 const Claw = {
-  state: 'idle',  // idle / open / openWait / down / closeWait / close / liftWait / up / return / dropWait / release / wait / shut
+  state: 'idle',  // idle / open / openWait / down / closeWait / close / liftWait / up / return / dropWait / release / wait / shut / home
   x: 0,
   y: 0,
   openness: 0,    // 爪の開き具合（1 で全開、0 で全閉）。待っている間は閉じている
@@ -22,6 +22,8 @@ const Claw = {
   // つかむ代わりに「当たった」として扱うときの関数（ぬしの台。つかめないほど大きいので、当てて体力を減らす）。
   // offset は当たった位置の、景品の中心からのずれ（0 で真ん中、1 で端）。ほかの台では null
   onHit: null,
+  // アームの真下の床の高さ（x を受け取って y を返す関数）。らせんタワーの坂だけで使い、ほかの台では null（平らな CONFIG.floorY）
+  floorAt: null,
 
   reset() {
     const c = this.cfg;
@@ -96,7 +98,9 @@ const Claw = {
       case 'down': {
         this.y += c.downSpeed * dt;
         // 床に着くか、真下の景品の中ほどまで下りたら止める
-        const touchFloor = this.tipY() >= CONFIG.floorY - 2;
+        // 床の高さは、ふつうは平らな CONFIG.floorY。らせんタワーの坂のように場所で高さが変わる台では floorAt で聞く
+        const floorY = this.floorAt ? this.floorAt(this.headX()) : CONFIG.floorY;
+        const touchFloor = this.tipY() >= floorY - 2;
         const touchPrize = prizes.some((p) =>
           Math.abs(p.x - this.headX()) < p.r && this.tipY() >= p.y);
         if (touchFloor || touchPrize) this.setState('closeWait');
@@ -139,16 +143,20 @@ const Claw = {
         this.checkSlip(dt);
         if (this.y <= c.homeY) {
           this.y = c.homeY;
-          this.setState('return');
+          // 取り出し口が待つ場所と別の台（らせんタワー）では、何もつかんでいなければ取り出し口へは行かず、その場で待つ
+          if (c.dropX !== undefined && !this.held) this.setState('shut');
+          else this.setState('return');
         }
         break;
       }
 
       case 'return': {
-        const dir = Math.sign(c.homeX - this.x);
+        // 取り出し口の上へ運ぶ。ふつうは待つ場所（homeX）が取り出し口の上。らせんタワーでは、待つ場所と別の dropX
+        const target = c.dropX !== undefined ? c.dropX : c.homeX;
+        const dir = Math.sign(target - this.x);
         this.x += dir * c.returnSpeed * dt;
-        if ((dir < 0 && this.x <= c.homeX) || (dir > 0 && this.x >= c.homeX) || dir === 0) {
-          this.x = c.homeX;
+        if ((dir < 0 && this.x <= target) || (dir > 0 && this.x >= target) || dir === 0) {
+          this.x = target;
           this.setState('dropWait');
         }
         this.carryHeld(dt);
@@ -180,7 +188,18 @@ const Claw = {
         // 爪を閉じてから、また動かせるようにする
         const rest = this.restOpenness();
         this.openness = Math.max(rest, this.openness - dt / c.closeTime);
-        if (this.openness <= rest) this.setState('idle');
+        if (this.openness <= rest) this.setState(this.x !== c.homeX ? 'home' : 'idle');
+        break;
+      }
+
+      case 'home': {
+        // 取り出し口で景品を離したあと、待つ場所（homeX）へ戻る（らせんタワーだけ。ほかの台は取り出し口の上で待つ）
+        const dir = Math.sign(c.homeX - this.x);
+        this.x += dir * c.returnSpeed * dt;
+        if ((dir < 0 && this.x <= c.homeX) || (dir > 0 && this.x >= c.homeX) || dir === 0) {
+          this.x = c.homeX;
+          this.setState('idle');
+        }
         break;
       }
     }
