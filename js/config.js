@@ -65,6 +65,18 @@ const CONFIG = {
     prizeCount: 4,     // 景品の数（クラシックの半分）
   },
 
+  // ながおしモード（js/modes/hold.js）。「下ろす」を押している間アームが右へ進み、はなすとブレーキをかけて止まってから下りる。
+  // ここにない値はクラシック（CONFIG.claw）と同じ。爪の開きとつかむ力は、難しさ（js/level.js）で決まる
+  holdClaw: {
+    startSpeed: 50,    // 押した瞬間の速さ（px/秒）
+    accel: 160,        // 押している間に速くなる割合（px/秒²）。長く押すほど速くなり、止めたい場所に合わせにくくなる
+    maxSpeed: 280,     // いちばん速いとき（px/秒）
+    brake: 600,        // はなしたあとのブレーキの強さ（px/秒²）。速いほど長くすべる（いちばん速いと約 65px）
+    trailSpeed: 150,   // この速さより速いと、アームの残像を出す
+    bulbStep: 18,      // レールの下の電球の間かく（px）
+    prizeCount: 5,     // 景品の数
+  },
+
   // らせんタワー（js/modes/spiral.js）。横から見た筐体で、ほかの台とは左右が逆（左にタワー、右に取り出し口）。
   // 左側の床が「＼」の坂になっていて、坂の上（左端）に、らせんの坂が巻き付いたタワーが立っている。景品はタワーのらせんの上の方に積んである。
   // 左の 3 つの「おとす」のどれかを押すと、いちばん下の景品が らせんを回りながら下りてきて、坂を右へ転がる。
@@ -488,6 +500,7 @@ const CONFIG = {
 //   stepOnly：ステップだけに出す（フリー・チャレンジ・ランダムには出さない）。stepCost：ステップで 1 ゲームに使う金コイン
 const GAMES = [
   { key: 'auto',    name: 'おまかせ',   desc: '自動で動くアームを下ろすだけ', genre: 'onetouch',   difficulty: 1, clearGets: 3 },
+  { key: 'hold',    name: 'ながおし',   desc: 'おすと進み、はなすと下りる', genre: 'onetouch', difficulty: 1, clearGets: 3 },
   { key: 'classic', name: 'クラシック', desc: '← → で動かして下ろす', genre: 'arm',   difficulty: 1, clearGets: 3 },
   { key: 'spiral',  name: 'らせんタワー', desc: 'ころがる けいひんを まちぶせ', genre: 'arm', difficulty: 2, clearGets: 2 },
   { key: 'button', name: '2ボタン',    desc: '① で右、② で奥へ動かす', genre: 'arm',   difficulty: 2, clearGets: 3 },

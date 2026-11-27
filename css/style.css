@@ -60,6 +60,26 @@ body {
 .controls button:active { background: #7a6db8; }
 
 .controls .drop { background: #e85d8a; min-width: 96px; }
+/* ながおしモードの大きな丸いボタン。押せるときは光の輪が広がり、押している間は へこんで明るく光る */
+.controls .drop.hold {
+  width: 110px; height: 110px; min-width: 0; padding: 0;
+  border-radius: 50%;
+  border-bottom: 6px solid #a8345c;
+  font-size: 1.15rem;
+  animation: hold-ring 1.4s ease-out infinite;
+}
+.controls .drop.hold:active {
+  background: #ff8ab2;
+  border-bottom-width: 2px;
+  transform: translateY(4px);
+  box-shadow: 0 0 22px 8px rgba(255, 224, 102, 0.75);
+  animation: none;
+}
+.controls .drop.hold.off { animation: none; border-bottom-color: #3f3768; }
+@keyframes hold-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(232, 93, 138, 0.7); }
+  100% { box-shadow: 0 0 0 18px rgba(232, 93, 138, 0); }
+}
 /* 今は押せないボタン（灰色）。押せるかどうかは、main.js の updateButtons が各モードに聞いて切り替える */
 .controls button.off,
 .controls button.off:active { background: #5a4f8c; color: #f4f1ff; opacity: 0.45; cursor: default; }

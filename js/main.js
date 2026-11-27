@@ -11,7 +11,7 @@
   BanbanMode.setUp(); // メニューの背景に、高い床に積んだ景品を出せるようにしておく
   SpiralMode.setUp(); // メニューの背景に、景品を積んだらせんタワーを出せるようにしておく
 
-  const MODES = { auto: AutoMode, classic: ClassicMode, spiral: SpiralMode, button: ButtonMode, buttonGuide: ButtonGuideMode, three: ThreeClawMode, threeGuide: ThreeGuideMode, ring: RingMode, ring2: Ring2Mode, shovel: ShovelMode, sweet: SweetMode, banban: BanbanMode, autobanban: BanbanAutoMode, boss: BossMode };
+  const MODES = { auto: AutoMode, hold: HoldMode, classic: ClassicMode, spiral: SpiralMode, button: ButtonMode, buttonGuide: ButtonGuideMode, three: ThreeClawMode, threeGuide: ThreeGuideMode, ring: RingMode, ring2: Ring2Mode, shovel: ShovelMode, sweet: SweetMode, banban: BanbanMode, autobanban: BanbanAutoMode, boss: BossMode };
   // 遊べるゲーム（ランダムは、このどれかを選ぶので含めない）。並び順は config.js の GAMES
   const MODE_KEYS = GAMES.map((g) => g.key).filter((k) => MODES[k]);
   // ランダムで選ぶゲーム（ステップだけのぬしの台は入れない）
@@ -29,6 +29,7 @@
   const nextRandomButton = document.getElementById('next-random'); // ランダムで遊び終わったときの「次のランダム」
   const controls = {
     auto: document.getElementById('controls-auto'),
+    hold: document.getElementById('controls-hold'),
     classic: document.getElementById('controls-classic'),
     spiral: document.getElementById('controls-spiral'),
     button: document.getElementById('controls-button'),
@@ -45,6 +46,7 @@
   };
   const helps = {
     auto: document.getElementById('help-auto'),
+    hold: document.getElementById('help-hold'),
     classic: document.getElementById('help-classic'),
     spiral: document.getElementById('help-spiral'),
     button: document.getElementById('help-button'),
@@ -325,6 +327,9 @@
     if (key === 'banban' || key === 'autobanban') {
       // 高い床に景品を積んだ、横から見た筐体
       BanbanMode.drawScene(time);
+    } else if (key === 'hold') {
+      // おまかせと同じ横から見た筐体に、速さのメーターとレールの電球を足したもの
+      HoldMode.drawPreview(time);
     } else if (key === 'spiral') {
       // 右側が坂で、右端にらせんタワーが立つ、横から見た筐体
       SpiralMode.drawScene(time);
