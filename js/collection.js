@@ -258,7 +258,9 @@ const Collection = {
       }
       el.name.textContent = got ? sprite.name : '？？？';
       // ひみつの景品は、まだ見つけていないときに、どこで手に入るかのヒントを出す
-      el.info.textContent = got ? '×' + count : sprite.secret ? 'ひみつ（' + LEVELS[sprite.secret].label + '）' : '';
+      // （出す場所をまだ決めていない ぬし（secret: 'unset'）は、難しさの代わりに「？？？」と出す）
+      const hint = sprite.secret && LEVELS[sprite.secret] ? LEVELS[sprite.secret].label : '？？？';
+      el.info.textContent = got ? '×' + count : sprite.secret ? 'ひみつ（' + hint + '）' : '';
       el.sell.textContent = sellable ? 'うる 🥈+' + prizeSilver(sprite) : '';
       el.item.title = sellable ? 'おすと 1 こ うる（おしたままで つづけて うる）' : '';
     });
