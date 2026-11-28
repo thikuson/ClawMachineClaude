@@ -8,7 +8,7 @@
   <title>クレーンゲーム</title>
   <!-- css と js の後ろの ?v= は版の印。スマホのブラウザが古い css・js を覚えたまま新しい index.html と
        組み合わせて表示が崩れることがあるので、内容を変えて公開するときはこの印を全部書き換える -->
-  <link rel="stylesheet" href="css/style.css?v=20261128b">
+  <link rel="stylesheet" href="css/style.css?v=20261129a">
 </head>
 <body>
   <main class="app">
@@ -30,11 +30,12 @@
       <div id="menu" class="menu">
         <!-- 持っている銀コインと金コイン。全部のモードで共通なので、いつも出しておく -->
         <p id="menu-wallet" class="menu-wallet"></p>
-        <!-- 遊び方の決まり（フリー・チャレンジ・ステップ）。前回選んだものを覚えておく -->
+        <!-- 遊び方の決まり（フリー・チャレンジ・ステップ・クエスト）。前回選んだものを覚えておく -->
         <div class="mode-tabs" role="tablist" aria-label="モード">
           <button type="button" class="mode-tab" data-play-mode="free" role="tab">フリー</button>
           <button type="button" class="mode-tab" data-play-mode="challenge" role="tab">チャレンジ</button>
           <button type="button" class="mode-tab" data-play-mode="step" role="tab">ステップ</button>
+          <button type="button" class="mode-tab" data-play-mode="quest" role="tab">クエスト</button>
         </div>
         <!-- 難しさは全部のゲームで共通。先に選んでから、下のゲームのどれかを押す -->
         <div class="level-tabs" role="radiogroup" aria-label="難しさ">
@@ -47,6 +48,19 @@
         <!-- ゲームのボタンは js/menu.js が config.js の GAMES から作る -->
         <div id="menu-list" class="menu-list"></div>
         <p class="menu-hint">Tab：モード　← →：難しさ　↑ ↓ と Enter か 数字キー：ゲーム</p>
+      </div>
+
+      <!-- クエストの会話の画面。メニューの上に重ねる。押すか Enter で次へ進む（js/quest.js）。
+           左（主人公は右）に話す人の顔、枠の上に名前の札を出す -->
+      <div id="quest-talk" class="quest-talk" hidden>
+        <div class="quest-talk-row">
+          <div id="quest-talk-face" class="quest-talk-face"></div>
+          <div class="quest-talk-box">
+            <p id="quest-talk-who" class="quest-talk-who"></p>
+            <p id="quest-talk-text" class="quest-talk-text"></p>
+            <p id="quest-talk-step" class="quest-talk-step"></p>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -154,7 +168,14 @@
         <button type="button" id="all-reset" class="zukan-reset">コインと ずかんを リセット</button>
         <!-- ステップのクリアの記録（全部の難しさ）を消す。確認のメッセージを出してから消す -->
         <button type="button" id="step-reset" class="zukan-reset">ステップを リセット</button>
+        <!-- クエストの進み具合（かなえた おねがいと、読んだ会話）を消す。確認のメッセージを出してから消す -->
+        <button type="button" id="quest-reset" class="zukan-reset">クエストを リセット</button>
       </div>
+    </section>
+    <!-- クエストで おねがいを かなえると もらえる おみやげの一覧（js/quest.js の renderSouvenirs が作る） -->
+    <section class="zukan souvenirs" aria-label="たびの おみやげ">
+      <h2>たびの おみやげ <span id="souvenir-progress"></span></h2>
+      <ul id="souvenir-list" class="zukan-list"></ul>
     </section>
     <p id="help-auto" class="help" hidden>キーボード：アームは自動で左右に動く。スペースか Enter で下ろす、R でリセット、M で効果音の切り替え</p>
     <p id="help-hold" class="help" hidden>キーボード：スペースか Enter を押している間、アームが右へ進む（長く押すほど速くなる）。はなすとブレーキがかかり、少しすべって止まってから下りる。1 回で進めるのは 1 回だけ。かんたんでは、今はなしたら止まる場所が床に ▲ で出る。R でリセット、M で効果音の切り替え</p>
@@ -172,33 +193,35 @@
   </main>
 
   <!-- ES モジュールを使わず、読み込み順で依存関係を解決する（?v= の印は、上の css の説明を参照） -->
-  <script src="js/config.js?v=20261128b"></script>
-  <script src="js/level.js?v=20261128b"></script>
-  <script src="js/sprites.js?v=20261128b"></script>
-  <script src="js/input.js?v=20261128b"></script>
-  <script src="js/prize.js?v=20261128b"></script>
-  <script src="js/swing.js?v=20261128b"></script>
-  <script src="js/claw.js?v=20261128b"></script>
-  <script src="js/effects.js?v=20261128b"></script>
-  <script src="js/sound.js?v=20261128b"></script>
-  <script src="js/collection.js?v=20261128b"></script>
-  <script src="js/render.js?v=20261128b"></script>
-  <script src="js/render_floor.js?v=20261128b"></script>
-  <script src="js/session.js?v=20261128b"></script>
-  <script src="js/menu.js?v=20261128b"></script>
-  <script src="js/modes/classic.js?v=20261128b"></script>
-  <script src="js/modes/spiral.js?v=20261128b"></script>
-  <script src="js/modes/auto.js?v=20261128b"></script>
-  <script src="js/modes/hold.js?v=20261128b"></script>
-  <script src="js/modes/floor.js?v=20261128b"></script>
-  <script src="js/modes/button.js?v=20261128b"></script>
-  <script src="js/modes/three_claw.js?v=20261128b"></script>
-  <script src="js/modes/ring.js?v=20261128b"></script>
-  <script src="js/modes/ring2.js?v=20261128b"></script>
-  <script src="js/modes/shovel.js?v=20261128b"></script>
-  <script src="js/modes/sweet.js?v=20261128b"></script>
-  <script src="js/modes/banban.js?v=20261128b"></script>
-  <script src="js/modes/boss.js?v=20261128b"></script>
-  <script src="js/main.js?v=20261128b"></script>
+  <script src="js/config.js?v=20261129a"></script>
+  <script src="js/level.js?v=20261129a"></script>
+  <script src="js/sprites.js?v=20261129a"></script>
+  <script src="js/input.js?v=20261129a"></script>
+  <script src="js/prize.js?v=20261129a"></script>
+  <script src="js/swing.js?v=20261129a"></script>
+  <script src="js/claw.js?v=20261129a"></script>
+  <script src="js/effects.js?v=20261129a"></script>
+  <script src="js/sound.js?v=20261129a"></script>
+  <script src="js/collection.js?v=20261129a"></script>
+  <script src="js/render.js?v=20261129a"></script>
+  <script src="js/render_floor.js?v=20261129a"></script>
+  <script src="js/session.js?v=20261129a"></script>
+  <script src="js/quest_art.js?v=20261129a"></script>
+  <script src="js/quest.js?v=20261129a"></script>
+  <script src="js/menu.js?v=20261129a"></script>
+  <script src="js/modes/classic.js?v=20261129a"></script>
+  <script src="js/modes/spiral.js?v=20261129a"></script>
+  <script src="js/modes/auto.js?v=20261129a"></script>
+  <script src="js/modes/hold.js?v=20261129a"></script>
+  <script src="js/modes/floor.js?v=20261129a"></script>
+  <script src="js/modes/button.js?v=20261129a"></script>
+  <script src="js/modes/three_claw.js?v=20261129a"></script>
+  <script src="js/modes/ring.js?v=20261129a"></script>
+  <script src="js/modes/ring2.js?v=20261129a"></script>
+  <script src="js/modes/shovel.js?v=20261129a"></script>
+  <script src="js/modes/sweet.js?v=20261129a"></script>
+  <script src="js/modes/banban.js?v=20261129a"></script>
+  <script src="js/modes/boss.js?v=20261129a"></script>
+  <script src="js/main.js?v=20261129a"></script>
 </body>
 </html>

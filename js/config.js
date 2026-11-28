@@ -538,6 +538,7 @@ const GENRES = [
 //   フリー：全部のゲームを自由に、コインいらずで遊ぶ
 //   チャレンジ：銀コインを使って遊び、景品と一緒に金コインを集める
 //   ステップ：金コインを使って、ジャンルの段を順に進む。段の中のどれか 1 つをクリアすると、次の段が遊べるようになる。難しさごとに別々に記録する
+//   クエスト：物語にそって、町の人の おねがいを かなえながら、章の最後の ぬしを たおして進む（js/quest.js）。コインいらず
 // machine は、そのモードで遊ぶときの筐体の色（CONFIG.colors の一部を置きかえる）。
 // どのモードで遊んでいるかが一目でわかるように、外枠・ガラス・床・取り出し口などの色をモードごとに変える。
 // アームやひもの色は、どのモードでも同じにする
@@ -556,6 +557,11 @@ const PLAY_MODES = [
   { key: 'step', name: 'ステップ', machine: {
     background: '#1c2f38', frame: '#3fc1c9', glass: '#284650', floor: '#3c6a72', chute: '#0f1d22', chuteEdge: '#f2c94c',
     wall: '#1f3a42', floorEdge: '#30565e', shovelFloor: '#22424a', tableSide: '#172f36', tableTop: '#2f5a63', tableStripe: '#376770',
+  } },
+  // クエスト：旅をするモードなので、草原のような みどりの枠に 深いみどりのガラス
+  { key: 'quest', name: 'クエスト', machine: {
+    background: '#1e2b1c', frame: '#8fd14f', glass: '#2d442c', floor: '#4c6b42', chute: '#111a10', chuteEdge: '#f2c94c',
+    wall: '#253a24', floorEdge: '#3b5634', shovelFloor: '#2b412a', tableSide: '#1c2c1b', tableTop: '#3e5a38', tableStripe: '#496942',
   } },
 ];
 

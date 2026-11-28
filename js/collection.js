@@ -2,6 +2,7 @@
 //   図鑑：景品ごとの「見つけたことがあるか」と「持っている数」（売ると数は減るが、見つけた記録は残る）
 //   コイン：銀コインと金コイン（全部のモードで共通。使い方は config.js の CONFIG.coins）
 //   ステップ：難しさごとに、クリアしたゲーム
+//   クエスト：かなえた おねがいと、読んだ会話（物語は 1 つだけなので、難しさで分けない。js/quest.js）
 const Collection = {
   STORAGE_KEY: 'clawMachineClaude.save',
   counts: [],      // 種類ごとの、持っている数
@@ -9,8 +10,10 @@ const Collection = {
   silver: 0,       // 銀コイン
   gold: 0,         // 金コイン
   level: 'normal', // メニューで最後に選んだ難しさ（次に開いたときも同じ難しさから始める）
-  playMode: 'free', // メニューの一番上のタブ（フリー・チャレンジ・ステップ）で最後に選んだもの
+  playMode: 'free', // メニューの一番上のタブ（フリー・チャレンジ・ステップ・クエスト）で最後に選んだもの
   stepCleared: { easy: [], normal: [], hard: [] }, // ステップでクリアしたゲーム（難しさごと）
+  questDone: [],   // クエストで かなえた おねがい（ぬしも含む。js/quest.js の名前）
+  questSeen: [],   // クエストで 読んだ会話
   SAVE_VERSION: 3, // 保存の形式の版。3 でスコアをやめてコインになった
   listElement: null,
   onChange: null,  // 持ち物が変わったときに呼ぶ（main.js がメニューの表示を直すのに使う）
@@ -51,6 +54,8 @@ const Collection = {
       if (typeof data.gold === 'number') this.gold = data.gold;
       if (LEVEL_KEYS.includes(data.level)) this.level = data.level;
       if (PLAY_MODES.some((m) => m.key === data.playMode)) this.playMode = data.playMode;
+      if (Array.isArray(data.questDone)) this.questDone = data.questDone;
+      if (Array.isArray(data.questSeen)) this.questSeen = data.questSeen;
       if (data.stepCleared) {
         for (const level of LEVEL_KEYS) {
           if (Array.isArray(data.stepCleared[level])) this.stepCleared[level] = data.stepCleared[level];
@@ -72,6 +77,8 @@ const Collection = {
         level: this.level,
         playMode: this.playMode,
         stepCleared: this.stepCleared,
+        questDone: this.questDone,
+        questSeen: this.questSeen,
         saveVersion: this.SAVE_VERSION,
       }));
     } catch (e) {
@@ -258,8 +265,8 @@ const Collection = {
       }
       el.name.textContent = got ? sprite.name : '？？？';
       // ひみつの景品は、まだ見つけていないときに、どこで手に入るかのヒントを出す
-      // （出す場所をまだ決めていない ぬし（secret: 'unset'）は、難しさの代わりに「？？？」と出す）
-      const hint = sprite.secret && LEVELS[sprite.secret] ? LEVELS[sprite.secret].label : '？？？';
+      // （クエストでだけ出る ぬし（secret: 'quest'）は、難しさの代わりに「クエスト」と出す）
+      const hint = sprite.secret === 'quest' ? 'クエスト' : LEVELS[sprite.secret] ? LEVELS[sprite.secret].label : '？？？';
       el.info.textContent = got ? '×' + count : sprite.secret ? 'ひみつ（' + hint + '）' : '';
       el.sell.textContent = sellable ? 'うる 🥈+' + prizeSilver(sprite) : '';
       el.item.title = sellable ? 'おすと 1 こ うる（おしたままで つづけて うる）' : '';
@@ -307,7 +314,7 @@ const Collection = {
     return value;
   },
 
-  // コインと図鑑を、最初の状態に戻す（ステップの進み具合と、選んでいる難しさ・モードは残す）
+  // コインと図鑑を、最初の状態に戻す（ステップ・クエストの進み具合と、選んでいる難しさ・モードは残す）
   resetAll() {
     this.counts = PRIZE_SPRITES.map(() => 0);
     this.found = PRIZE_SPRITES.map(() => false);
@@ -319,6 +326,21 @@ const Collection = {
   // ステップのクリアの記録を、全部の難しさの分消す（コインと図鑑は残す）
   resetSteps() {
     this.stepCleared = { easy: [], normal: [], hard: [] };
+    this.changed();
+  },
+
+  // クエストで おねがいを かなえたときに呼ぶ。はじめて かなえたときは true を返す
+  completeQuest(id) {
+    if (this.questDone.includes(id)) return false;
+    this.questDone.push(id);
+    this.changed();
+    return true;
+  },
+
+  // クエストの進み具合を消して、物語を最初からにする（コインと図鑑は残す）
+  resetQuest() {
+    this.questDone = [];
+    this.questSeen = [];
     this.changed();
   },
 

@@ -240,10 +240,10 @@ body {
    絵文字のフォントに合わせて行が高くなり、モードを切り替えたときに 1px ほど上下に動いて見える */
 .menu, .menu button { line-height: 1.35; }
 
-/* 一番上の、モード（フリー・チャレンジ・ステップ）のタブ */
+/* 一番上の、モード（フリー・チャレンジ・ステップ・クエスト）のタブ */
 .mode-tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   width: 100%;
   max-width: 420px;
   border-bottom: 2px solid #5a4f8c;
@@ -557,6 +557,8 @@ body {
   /* 上のボタンが 3 つ並んでも 1 行に収まるように、キーボードのキーの案内は省く */
   .play-bar .key-hint { display: none; }
   .back { padding: 6px 10px; }
+  /* クエストは、おねがいの ことばが物語なので、せまい画面でも説明を出す（ボタンは 4 つだけなので収まる） */
+  .menu[data-play-mode="quest"] .menu-desc { display: block; }
 }
 
 /* さらにせまい画面（幅 360px 以下）では、もう少し詰める */
@@ -579,4 +581,112 @@ body {
     padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   }
   .controls { margin-bottom: calc(40px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* クエストは、おねがいの ことばで ボタンの幅が変わらないように、2 列を半分ずつにする */
+.menu[data-play-mode="quest"] .menu-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+/* クエストのボタンは、名前の左に顔と ✔ が付くので、★ は省いて名前が入るようにする。
+   それでも入らない長い名前は「…」で切り、ボタンの外にはみ出して横のスクロールバーが出ないようにする */
+.menu[data-play-mode="quest"] .menu-stars { display: none; }
+.menu[data-play-mode="quest"] .menu-name { overflow: hidden; text-overflow: ellipsis; }
+
+/* クエスト：章の見出しと、その左右の ◀ ▶（前の章・次の章を見る） */
+.quest-heading { display: flex; align-items: center; gap: 6px; }
+.quest-nav {
+  padding: 0 8px;
+  border: 1px solid #9cf07a;
+  border-radius: 6px;
+  background: transparent;
+  color: #9cf07a;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.quest-nav:disabled { opacity: 0.25; cursor: default; }
+
+/* クエスト：メニューの説明の行の「おはなし」ボタン（今の章の会話を、もう一度読む） */
+.quest-replay {
+  padding: 0 8px;
+  border: 1px solid #9cf07a;
+  border-radius: 8px;
+  background: transparent;
+  color: #9cf07a;
+  font-size: 0.8rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* クエストの会話の画面。画面の下に、顔と会話の枠を出し、どこを押しても次へ進む */
+.quest-talk {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: flex-end;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(10, 18, 10, 0.55);
+  cursor: pointer;
+}
+
+.quest-talk-row { display: flex; align-items: flex-end; gap: 8px; width: 100%; }
+/* 主人公（みならい）が話すときは、顔を右に出す */
+.quest-talk.me .quest-talk-row { flex-direction: row-reverse; }
+
+/* 話す人の顔。ドット絵を大きく出す */
+.quest-talk-face {
+  flex: none;
+  width: 88px;
+  height: 88px;
+  padding: 4px;
+  border: 3px solid #8fd14f;
+  border-radius: 12px;
+  background: #2d442c;
+}
+.quest-talk-face canvas { width: 100%; height: 100%; image-rendering: pixelated; }
+.quest-talk-face.hop { animation: quest-hop 0.35s ease-out; }
+@keyframes quest-hop {
+  0% { transform: translateY(0); }
+  40% { transform: translateY(-10px); }
+  100% { transform: translateY(0); }
+}
+
+.quest-talk-box {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  padding: 16px 14px 8px;
+  border: 3px solid #8fd14f;
+  border-radius: 12px;
+  background: rgba(20, 32, 19, 0.96);
+  color: #f4f1ff;
+}
+
+/* 名前の札。枠の上のふちに重ねて、その人の服の色で出す */
+.quest-talk-who {
+  position: absolute;
+  top: -14px;
+  left: 10px;
+  margin: 0;
+  padding: 1px 10px;
+  border: 2px solid #1a1730;
+  border-radius: 999px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 1px 0 #1a1730, 1px 0 0 #1a1730, -1px 0 0 #1a1730, 0 -1px 0 #1a1730;
+}
+.quest-talk.me .quest-talk-who { left: auto; right: 10px; }
+.quest-talk-text { margin: 0; min-height: 3em; font-size: 1.05rem; line-height: 1.5; }
+.quest-talk-step { margin: 4px 0 0; text-align: right; font-size: 0.8rem; color: #9cf07a; }
+
+/* クエストのボタンの名前の左の、小さな顔 */
+.quest-face { width: 22px; height: 22px; margin-right: 4px; vertical-align: -5px; image-rendering: pixelated; }
+
+/* たびの おみやげ（図鑑と同じ形で、図鑑の下に出す） */
+.souvenirs { margin-top: 12px; }
+.souvenir .zukan-info { font-size: 0.68rem; }
+
+@media (max-width: 520px) {
+  .quest-talk-face { width: 64px; height: 64px; }
+  .quest-talk-text { font-size: 0.92rem; }
+  .quest-face { width: 18px; height: 18px; vertical-align: -3px; }
 }

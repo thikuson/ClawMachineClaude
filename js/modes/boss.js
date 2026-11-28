@@ -1,6 +1,7 @@
 // ぬしの台：ステップの最後に出る台。大きな「ぬし」は大きすぎてつかめないので、
 // アームを当てて体力を減らしていき、0 にすると取り出し口へ転がり落ちてゲットになる。
-// 横から見たクラシックと同じ筐体とアームを使う。ぬしは難しさごとに違い、図鑑の「ひみつ」の景品になる
+// 横から見たクラシックと同じ筐体とアームを使う。ぬしは難しさごとに違い、図鑑の「ひみつ」の景品になる。
+// クエストでは、章ごとに決めた ぬし（js/quest.js）が出て、体力も章ごとに変わる
 const BossMode = {
   key: 'boss',
   session: null,
@@ -25,12 +26,16 @@ const BossMode = {
     this.session.reset();
     this.session.help = 'ぬしの まんなかを ねらって 下ろそう';
     const b = CONFIG.boss;
+    const quest = this.session.quest;
+    const hp = quest ? Math.round(b.hp * quest.bossHp) : b.hp;
     this.boss = {
-      type: PRIZE_SPRITES.findIndex((s) => s.secret === Level.key), // 難しさに合った、ひみつの景品
+      // ステップでは難しさに合った ひみつの景品、クエストでは その章の ぬし
+      type: quest ? PRIZE_SPRITES.findIndex((s) => s.name === quest.bossName) : PRIZE_SPRITES.findIndex((s) => s.secret === Level.key),
       x: 320,
       y: CONFIG.floorY - b.r,
       r: b.r,
-      hp: b.hp,
+      hp: hp,
+      maxHp: hp,
       dir: Math.random() < 0.5 ? -1 : 1, // 左右に動く向き
       shake: 0,   // 当たったときに震える時間
       down: false, // 体力が 0 になって、取り出し口へ転がっている
@@ -100,7 +105,9 @@ const BossMode = {
       return;
     }
     // 左右にゆっくり歩く（アームが下りている間や、当たって震えている間は止まる）
-    const speed = CONFIG.boss.wanderSpeed[Level.key];
+    // ステップでは難しさで、クエストでは章で決めた速さで歩く
+    const quest = this.session.quest;
+    const speed = quest ? quest.bossSpeed : CONFIG.boss.wanderSpeed[Level.key];
     if (speed > 0 && boss.shake === 0 && (Claw.state === 'idle' || Claw.state === 'return' || Claw.state === 'dropWait' || Claw.state === 'wait' || Claw.state === 'shut')) {
       boss.x += boss.dir * speed * dt;
       if (boss.x >= this.maxX()) { boss.x = this.maxX(); boss.dir = -1; }
@@ -145,13 +152,13 @@ const BossMode = {
     const x = CONFIG.chute.x + CONFIG.chute.w + 16;
     const w = CONFIG.case.x + CONFIG.case.w - 16 - x;
     const y = CONFIG.floorY + 24;
-    const ratio = boss.hp / CONFIG.boss.hp;
+    const ratio = boss.hp / boss.maxHp;
     ctx.fillStyle = '#f4f1ff';
     ctx.font = 'bold 13px sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText(PRIZE_SPRITES[boss.type].name, x, y - 6);
     ctx.textAlign = 'right';
-    ctx.fillText('たいりょく ' + boss.hp + ' / ' + CONFIG.boss.hp, x + w, y - 6);
+    ctx.fillText('たいりょく ' + boss.hp + ' / ' + boss.maxHp, x + w, y - 6);
     ctx.fillStyle = '#3d3866';
     ctx.fillRect(x, y, w, 10);
     ctx.fillStyle = ratio > 0.5 ? '#9cf07a' : ratio > 0.25 ? '#ffd23f' : '#ff7a8a';

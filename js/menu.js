@@ -1,5 +1,5 @@
 // メニューのゲームのボタンを、config.js の GAMES・GENRES から作る
-// 一番上のタブ（フリー・チャレンジ・ステップ）によって、並べ方と見せ方を変える
+// 一番上のタブ（フリー・チャレンジ・ステップ・クエスト）によって、並べ方と見せ方を変える
 const Menu = {
   // 難しさの目安を ★ で書く（0 は書かない）
   stars(n) {
@@ -17,10 +17,12 @@ const Menu = {
     const locked = state === 'locked';
     if (locked || poor) b.disabled = true;
     if (poor) b.classList.add('poor');
-    const mark = locked ? '🔒 ' : state === 'cleared' ? '✔ ' : '';
-    const desc = locked ? 'まえの だんを クリアで ひらく' : game.desc;
+    // クエストのボタンは名前の左に顔があって せまいので、✔ を付けずに名前の色（みどり）だけで、かなえたことを見せる
+    const mark = locked ? '🔒 ' : state === 'cleared' && !game.face ? '✔ ' : '';
+    // まだ遊べないときの説明（クエストでは game.lockText を使う）
+    const desc = locked ? (game.lockText || 'まえの だんを クリアで ひらく') : game.desc;
     b.innerHTML =
-      '<span class="menu-name">' + (number ? '<span class="menu-num">' + number + '</span>' : '') + mark + (locked ? '？？？' : game.name) + '</span>' +
+      '<span class="menu-name">' + (number ? '<span class="menu-num">' + number + '</span>' : '') + mark + (locked && !game.lockText ? '？？？' : game.name) + '</span>' +
       '<span class="menu-stars">' + (locked ? '' : this.stars(game.difficulty)) + '</span>' +
       '<span class="menu-desc">' + desc + '</span>' +
       '<span class="menu-note">' + (locked ? '　' : note) + '</span>';
@@ -47,6 +49,11 @@ const Menu = {
       return grid;
     };
     const value = (text) => '<span class="menu-info-value">' + text + '</span>';
+
+    if (playMode === 'quest') {
+      this.buildQuest(infoElement, section, add, buttons);
+      return buttons;
+    }
 
     const cost = CONFIG.coins.stepCost;
     if (playMode === 'step') {
@@ -103,5 +110,63 @@ const Menu = {
         poor));
     }
     return buttons;
+  },
+
+  // クエスト：見ている章の おねがい 3 つと、ぬしの台を並べる（クリアした章の数は、説明の行に出す）。
+  // 章の見出しの左右の ◀ ▶ で、クリアした章にもどって もう一度遊べる（お礼は はじめての 1 回だけ）。
+  // ボタンの dataset.quest に おねがいの名前を入れておき、main.js が遊ぶときに読む
+  buildQuest(infoElement, section, add, buttons) {
+    const c = Quest.shownChapter();
+    const ch = QUEST_CHAPTERS[c];
+    infoElement.innerHTML = '<span>コイン いらず</span>' +
+      '<span class="menu-info-value">' + Quest.doneCount() + ' / ' + QUEST_CHAPTERS.length + ' しょう クリア</span>' +
+      '<button type="button" class="quest-replay">📖 おはなし</button>';
+    infoElement.querySelector('.quest-replay').addEventListener('click', () => Quest.showTalk(Quest.replayTalk()));
+    const done = Quest.chapterDone(c);
+    const grid = section((done ? '✔ ' : '') + (c + 1) + 'しょう：' + ch.place + (done ? '（クリア！）' : ''));
+    // 見出しの左右に、前の章・次の章へ動くボタンを付ける（行けない向きは押せない）
+    const heading = grid.previousSibling;
+    heading.classList.add('quest-heading');
+    const nav = (text, step, enabled) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'quest-nav';
+      b.textContent = text;
+      b.disabled = !enabled;
+      b.addEventListener('click', () => Quest.moveView(step));
+      return b;
+    };
+    heading.prepend(nav('◀', -1, c > 0));
+    heading.append(nav('▶', 1, c < Quest.currentChapter()));
+    const card = (id, game, state, note, boss) => {
+      add(grid, game, state, note, false);
+      const b = grid.lastChild;
+      b.dataset.quest = id;
+      if (boss) b.classList.add('boss');
+    };
+    ch.requests.forEach((r, k) => {
+      const id = Quest.requestId(c, k);
+      const g = GAMES.find((x) => x.key === r.game);
+      card(id, { key: r.game, face: true, name: r.who, desc: '「' + r.text + '」', difficulty: g.difficulty },
+        Quest.isDone(id) ? 'cleared' : 'next', g.name + 'で ' + r.gets + 'こ　🎁 ' + QUEST_SOUVENIRS[id].name);
+      Menu.questFace(grid.lastChild, r.who);
+    });
+    // ぬしの台は、おねがいを 3 つ かなえると ひらく
+    const open = DEBUG || Quest.requestsDone(c);
+    card(Quest.bossId(c), { key: 'boss', face: open || done, name: ch.boss, desc: 'おおきな ぬしを たおせ！', difficulty: 3, lockText: 'おねがいを 3つ かなえると ひらく' },
+      done ? 'cleared' : open ? 'next' : 'locked', 'たおすと ずかんに のる', true);
+    if (open || done) Menu.questFace(grid.lastChild, ch.boss);
+  },
+
+  // クエストのボタンの名前の左に、その人（ぬし）の小さな顔を出す
+  questFace(button, who) {
+    const face = QuestArt.face(who);
+    if (!face) return;
+    const img = document.createElement('canvas');
+    img.width = face.width;
+    img.height = face.height;
+    img.className = 'quest-face';
+    img.getContext('2d').drawImage(face, 0, 0);
+    button.querySelector('.menu-name').prepend(img);
   },
 };

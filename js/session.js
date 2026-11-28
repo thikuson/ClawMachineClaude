@@ -3,8 +3,10 @@ function GameSession(modeKey, options) {
   // ランダムで選ばれたゲームのときは、選ばれたゲームの名前が入っている（main.js が始める前に設定する）
   this.randomName = GameSession.randomName;
   this.gameKey = modeKey;
-  // メニューの一番上のタブで選んでいたモード（'free'・'challenge'・'step'。main.js が始める前に設定する）
+  // メニューの一番上のタブで選んでいたモード（'free'・'challenge'・'step'・'quest'。main.js が始める前に設定する）
   this.playMode = GameSession.playMode;
+  // クエストで かなえようとしている おねがい（js/quest.js の Quest.find の形。クエスト以外は null）
+  this.quest = this.playMode === 'quest' ? GameSession.quest : null;
   this.plays = this.randomName ? CONFIG.game.randomPlays : CONFIG.game.plays;
   this.restartHint = options.restartHint;
   // 難しさの表示に、アームの揺れのあり・なしを添えるか（リングはどの難しさでも揺れるので添えない）
@@ -19,6 +21,7 @@ function GameSession(modeKey, options) {
 // ランダムで遊んでいるときに、選ばれたゲームの名前を入れておく（それ以外は null）
 GameSession.randomName = null;
 GameSession.playMode = 'free';
+GameSession.quest = null;
 
 // ゲーム内のセリフ
 GameSession.MESSAGES = {
@@ -46,6 +49,8 @@ GameSession.prototype.reset = function () {
   this.messageTimer = 0;
   this.endTimer = 0;     // 最後の 1 回のあと、景品が落ち着くまで待つ時間
   this.stepCleared = false; // ステップで、このゲームをクリアしたか
+  this.questCleared = false; // クエストで、この 1 ゲームのうちに おねがいを かなえたか
+  this.questReward = null;   // そのときに もらった おみやげの名前（前に かなえたことがあるときや、ぬしの台では null）
   // チャレンジは、回数ではなく銀コインがあるだけ遊べる
   if (this.playMode === 'challenge') this.playsLeft = Math.floor(Collection.silver / CONFIG.coins.challengeCost);
   // ステップは、1 ゲームごとに金コインを払う。足りなければ遊べないので、すぐに終わりの画面を出す
@@ -144,6 +149,22 @@ GameSession.prototype.onCaptured = function (prize, x, y) {
     this.messageTimer = 4;
     announced = true;
   }
+  // クエスト：決まった数の景品を取ったら、おねがいが かなう。はじめて かなえたときだけ、お礼の おみやげがもらえる
+  if (this.quest && !this.questCleared && this.gets >= this.quest.gets) {
+    this.questCleared = true;
+    if (Collection.completeQuest(this.quest.id)) {
+      // おみやげは、おねがいを はじめて かなえたときだけ もらえる（ぬしの台は、ぬしが図鑑に入るのが ごほうび）
+      if (this.quest.souvenir) {
+        this.questReward = this.quest.souvenir;
+        Effects.popup('🎁 ' + this.questReward, x, y - 160, '#ffe066');
+      }
+    }
+    Effects.popup(this.quest.boss ? 'たおした！' : 'かなえた！', x, y - 120, '#9cf07a');
+    Sound.clear();
+    this.message = this.quest.boss ? PRIZE_SPRITES[prize.type].name + 'を たおした！' : this.quest.who + 'の おねがいを かなえた！';
+    this.messageTimer = 4;
+    announced = true;
+  }
   // 図鑑が全部そろったら、大きく知らせる（ひみつの景品も含めて全部）
   if (isNew && Collection.completedCount() === PRIZE_SPRITES.length) {
     Sound.clear();
@@ -180,20 +201,21 @@ GameSession.prototype.update = function (dt, clawIdle, prizesLeft) {
   this.gameOver = { gets: this.gets, earnedGold: this.earnedGold, allClear: noPrizes };
   if (this.playMode === 'challenge' && !noPrizes) this.gameOver.title = 'ぎんコインが なくなった';
   else if (this.stepCleared) this.gameOver.title = 'クリア！';
-  if (noPrizes || this.stepCleared) Sound.clear();
+  else if (this.questCleared) this.gameOver.title = this.quest.boss ? 'ぬしを たおした！' : 'おねがい かなえた！';
+  if (noPrizes || this.stepCleared || this.questCleared) Sound.clear();
 };
 
 GameSession.prototype.drawHud = function () {
   const challenge = this.playMode === 'challenge';
   const game = GAMES.find((g) => g.key === this.gameKey) || {};
   Render.drawHud({
-    left: 'ゲット ' + this.gets + ' こ' + (this.playMode === 'step' ? ' / ' + game.clearGets : ''),
+    left: 'ゲット ' + this.gets + ' こ' + (this.playMode === 'step' ? ' / ' + game.clearGets : this.quest ? ' / ' + this.quest.gets : ''),
     center: challenge ? '🥈 のこり ' + this.playsLeft + ' 枚' : 'のこり ' + this.playsLeft + ' 回',
     warn: this.playsLeft <= 2, // 残りが少なくなったら色を変えて目立たせる
     right: '🥈' + Collection.silver + '　🥇' + Collection.gold,
     // ランダムのときは、どのゲームが選ばれたかも添える
     levelLabel: (this.randomName ? 'ランダム：' + this.randomName + '　' : '') +
-      (challenge ? 'チャレンジ　' : '') + (this.playMode === 'step' ? 'ステップ　' : '') +
+      (challenge ? 'チャレンジ　' : '') + (this.playMode === 'step' ? 'ステップ　' : '') + (this.quest ? 'クエスト　' : '') +
       Level.settings.label + (!this.showSwing ? '' : Level.settings.swing ? '（揺れあり）' : '（揺れなし）'),
     message: this.message || this.help,
     soundOn: Sound.enabled,
@@ -210,6 +232,11 @@ GameSession.prototype.drawHud = function () {
       lines.push('ゲット：' + over.gets + ' こ');
       if (challenge) lines.push('きんコイン：+' + over.earnedGold + ' 枚');
       if (this.playMode === 'step') lines.push(this.stepCleared ? 'つぎの だんへ すすもう！' : 'クリアまで あと ' + Math.max(0, game.clearGets - over.gets) + ' こ');
+      if (this.quest) {
+        if (this.questReward) lines.push('おみやげ「' + this.questReward + '」を もらった！');
+        lines.push(this.questCleared ? (this.quest.boss ? 'メニューで おはなしの つづきへ' : 'メニューで つぎの おねがいへ')
+          : this.quest.boss ? 'もういちど ちょうせんしよう' : 'かなえるまで あと ' + Math.max(0, this.quest.gets - over.gets) + ' こ');
+      }
     }
     if (challenge) {
       hint = this.playsLeft > 0

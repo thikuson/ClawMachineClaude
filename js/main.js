@@ -4,6 +4,9 @@
   Render.init(canvas);
   Input.init();
   Collection.init(document.getElementById('zukan-list'));
+  Quest.init(); // クエストの会話の画面と、たびの おみやげの一覧
+  Quest.renderSouvenirs();
+  Quest.onViewChange = () => rebuildMenu(); // クエストで見る章を変えたら、メニューを作り直す
   RingMode.setUp(); // メニューの背景に、景品を載せた台とリングを出せるようにしておく
   SweetMode.setUp(); // メニューの背景に、ドームとプッシャーの台を出せるようにしておく
   Ring2Mode.setUp(); // メニューの背景に、2 段の台を出せるようにしておく
@@ -20,7 +23,7 @@
   const menu = document.getElementById('menu');
   const menuList = document.getElementById('menu-list');
   const menuInfo = document.getElementById('menu-info');
-  const modeTabs = Array.from(menu.querySelectorAll('.mode-tab'));     // フリー・チャレンジ・ステップ
+  const modeTabs = Array.from(menu.querySelectorAll('.mode-tab'));     // フリー・チャレンジ・ステップ・クエスト
   const levelButtons = Array.from(menu.querySelectorAll('.level-tab'));  // かんたん・ふつう・むずかしい
   const wallet = document.getElementById('menu-wallet'); // メニューの持ち物（銀コイン・金コイン）
   // ゲームのボタン（押せるものだけ、上から順）。モードのタブを切り替えるたびに作り直す
@@ -90,7 +93,7 @@
     if (selected >= 0) menuButtons[selected].scrollIntoView({ block: 'nearest' });
   }
 
-  // 一番上のタブ（フリー・チャレンジ・ステップ）を選ぶ
+  // 一番上のタブ（フリー・チャレンジ・ステップ・クエスト）を選ぶ
   function selectPlayMode(key) {
     playMode = key;
     Collection.setPlayMode(key);
@@ -103,6 +106,8 @@
     // 筐体の色を、モードの色にする（config.js の PLAY_MODES の machine）
     Object.assign(CONFIG.colors, PLAY_MODES.find((m) => m.key === key).machine);
     rebuildMenu();
+    // クエストでは、まだ読んでいない会話（ぬしを たおしたあとの会話や、次の章の はじめの会話）を出す
+    if (key === 'quest') Quest.showTalk(Quest.pendingTalks());
   }
 
   // ゲームのボタンを、選んでいるモードと難しさで作り直す。
@@ -119,7 +124,7 @@
     wallet.innerHTML = (DEBUG ? '<span class="menu-warn">デバッグ（きろくは のこらない）</span>' : '') + '<span class="silver">🥈 ぎん <b>' + Collection.silver + '</b></span>' +
       '<span class="gold">🥇 きん <b>' + Collection.gold + '</b></span>';
     menuButtons.forEach((b) => {
-      b.addEventListener('click', () => startMode(b.dataset.mode));
+      b.addEventListener('click', () => startButton(b));
       b.addEventListener('pointerenter', () => { hovered = b.dataset.mode; });
       b.addEventListener('pointerleave', () => { if (hovered === b.dataset.mode) hovered = null; });
     });
@@ -172,9 +177,15 @@
     current.session.messageTimer = 2.5;
   }
 
-  // key はメニューで選んだもの（ゲームのどれかか、ランダム）
-  function startMode(key) {
+  // メニューのボタンで始める。クエストのボタンには、かなえる おねがいの名前（dataset.quest）が入っている
+  function startButton(b) {
+    startMode(b.dataset.mode, b.dataset.quest);
+  }
+
+  // key はメニューで選んだもの（ゲームのどれかか、ランダム）。questId はクエストの おねがいの名前
+  function startMode(key, questId) {
     GameSession.playMode = playMode;
+    GameSession.quest = playMode === 'quest' && questId ? Quest.find(questId) : null;
     if (key === 'random') {
       startRandom();
       return;
@@ -211,7 +222,7 @@
   window.addEventListener('resize', () => { if (!current) rebuildMenu(); });
   // メニューを出している間だけ、Tab キーでモードのタブを順に切り替える（Shift + Tab で逆回り）
   window.addEventListener('keydown', (e) => {
-    if (current || e.code !== 'Tab') return;
+    if (current || e.code !== 'Tab' || Quest.isTalking()) return;
     e.preventDefault();
     const i = PLAY_MODES.findIndex((m) => m.key === playMode);
     const n = PLAY_MODES.length;
@@ -235,9 +246,19 @@
     Collection.resetSteps();
   });
 
+  // クエストのリセット。確認してから消す
+  document.getElementById('quest-reset').addEventListener('click', () => {
+    if (!window.confirm('クエストの すすみぐあいを リセットしますか？\n（ものがたりが さいしょから に なります。コインと ずかんは のこります）')) return;
+    Collection.resetQuest();
+    if (!current && playMode === 'quest') Quest.showTalk(Quest.pendingTalks());
+  });
+
   // 図鑑で景品を売ったときなど、持ち物が変わったら、メニューを出しているときはメニューの表示を直す
   // （コインが増えて、チャレンジやステップが遊べるようになることがあるため）
-  Collection.onChange = () => { if (!current) rebuildMenu(); };
+  Collection.onChange = () => {
+    Quest.renderSouvenirs(); // クエストで おねがいを かなえたり、リセットしたりすると、おみやげの一覧が変わる
+    if (!current) rebuildMenu();
+  };
 
   // 最初に何か操作したときに、音を鳴らす準備をする
   const unlockSound = () => Sound.unlock();
@@ -245,6 +266,12 @@
   window.addEventListener('pointerdown', unlockSound);
 
   function updateMenu() {
+    // クエストの会話を出している間は、Enter かスペースで次へ進むだけにする
+    if (Quest.isTalking()) {
+      if (Input.wasPressed('Enter') || Input.wasPressed('Space')) Quest.nextTalk();
+      Input.clearPressed();
+      return;
+    }
     // ↑ ↓ で遊び方、← → で難しさを選ぶ
     // 何も選んでいないときは、↓ で一番上、↑ で一番下から選び始める
     const count = menuButtons.length;
@@ -256,11 +283,11 @@
     // 数字キーは、押せるボタンの上からの番号（ボタンの左に書いてある数字）
     for (let n = 1; n <= 9; n++) {
       if (Input.wasPressed('Digit' + n) && menuButtons[n - 1]) {
-        startMode(menuButtons[n - 1].dataset.mode);
+        startButton(menuButtons[n - 1]);
         return;
       }
     }
-    if ((Input.wasPressed('Enter') || Input.wasPressed('Space')) && selected >= 0) startMode(menuButtons[selected].dataset.mode);
+    if ((Input.wasPressed('Enter') || Input.wasPressed('Space')) && selected >= 0) startButton(menuButtons[selected]);
   }
 
   function update(dt) {
